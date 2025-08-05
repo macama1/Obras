@@ -4,10 +4,11 @@
 export const canalOptions = [
   'Constructora Pequeña',
   'Constructora Mediana',
-  'Constructora Pequeña',
+  'Constructora Grande',
   'Ferreteria',
   'Distribuidor',
   'Especialista',
+  'Distribuidor Grandes Supericies',
 ];
 
 // --- Opciones para el Estado de la Obra (ACTUALIZADO) ---
@@ -25,8 +26,8 @@ export const estadoObraOptions = [
   'Fundaciones',
   'Obra Gruesa',
   'Terminaciones',
-  'Obra Terminada',
-  'Obra Paralizada',
+  'Terminada',
+  'Detenida',
 ];
 
 // --- NUEVA OPCIÓN ---
