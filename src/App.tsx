@@ -5,11 +5,7 @@ import './App.css';
 const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLdKl0sfkjUbVJWPM6HLG98Cu3G4wfYhgSmEk_pUTPWHhMXgw/exec";
 
 // --- Interfaces ---
-interface Obra {
-  id: string;
-  obra: string;
-  empresa: string;
-}
+// La interfaz 'Obra' ha sido eliminada ya que no se usaba.
 interface ObraDetails { [key: string]: any; }
 
 // --- Componente de Autocompletado ---
@@ -163,10 +159,6 @@ export default function App() {
   };
   
   const handleCreateObra = async () => {
-    if (!newObraData['Empresa'] || !newObraData['Obra'] || !newObraData['Canal']) {
-      setMessage('❌ Los campos Empresa, Obra y Canal son obligatorios.');
-      return;
-    }
     setLoading(true);
     setMessage('');
     try {
@@ -215,7 +207,7 @@ export default function App() {
               </div>
             </div>
             <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
-              <button onClick={() => setIsCreateMode(true)} className="secondary-button">Crear Nueva Obra</button>
+              <button onClick={() => { setIsCreateMode(true); setComunaInput(''); }} className="secondary-button">Crear Nueva Obra</button>
             </div>
           </>
         ) : (
@@ -233,7 +225,24 @@ export default function App() {
               {/* Columna 2 */}
               <div className="form-column">
                 <div className="form-field"><label>Región</label><select name="Región" value={newObraData['Región']} onChange={handleNewObraInputChange}><option value="">-- Elija una región --</option>{regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}</select></div>
-                <div className="form-field"><label>Comuna</label><input type="text" name="Comuna" value={newObraData['Comuna']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field">
+                  <label>Comuna</label>
+                  <AutocompleteInput
+                    value={comunaInput}
+                    onChange={(e) => {
+                      setComunaInput(e.target.value);
+                      setNewObraData(prev => ({...prev, 'Comuna': e.target.value}));
+                    }}
+                    onSuggestionClick={(comuna) => {
+                      setComunaInput(comuna);
+                      setNewObraData(prev => ({...prev, 'Comuna': comuna}));
+                      setComunaSuggestions([]);
+                    }}
+                    suggestions={comunaSuggestions}
+                    placeholder="Busque una comuna..."
+                    disabled={loading}
+                  />
+                </div>
                 <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Estado de Obra</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div className="form-field"><label>¿Les Vendemos?</label><select name="¿Les Vendemos?" value={newObraData['¿Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
