@@ -30,7 +30,6 @@ export const estadoObraOptions = [
   'Autorización de obra preliminar',
   'Cierre Perimetral',
   'Limpieza y Demolición',
-  'Demolición',
   'Instalación de Faena',
   'Obras Preliminares',
   'Movimiento de Tierra',
@@ -463,3 +462,4 @@ export const regionesYComunas = [
     ],
   },
 ];
+
