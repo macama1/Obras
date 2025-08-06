@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { canalOptions, estadoObraOptions, regionesYComunas, lesVendemosOptions } from './database';
+import { canalOptions, estadoObraOptions, regionesYComunas, lesVendemosOptions, vendedorOptions } from './database';
 import './App.css';
 
 const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLdKl0sfkjUbVJWPM6HLG98Cu3G4wfYhgSmEk_pUTPWHhMXgw/exec";
@@ -28,6 +28,29 @@ const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, pl
   </div>
 );
 
+// --- Estado Inicial para una Nueva Obra ---
+const initialNewObraState = {
+  'Empresa': '',
+  'Obra': '',
+  'Vendedor': '',
+  'Canal': '',
+  'Tipo Construcción': '',
+  'Región': '',
+  'Comuna': '',
+  'Dirección': '',
+  'Estado de Obra': '',
+  '¿Les Vendemos?': '',
+  'Observaciones de Compra': '',
+  'M²': '',
+  'Nombre Contacto': '',
+  'Cargo Contacto': '',
+  'Email Contacto': '',
+  'Teléfono Contacto': '',
+  'Contacto Administrador': '',
+  'Comentarios Última Visita': ''
+};
+
+
 export default function App() {
   // --- Estados ---
   const [allData, setAllData] = useState<ObraDetails[]>([]);
@@ -43,7 +66,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [isCreateMode, setIsCreateMode] = useState(false);
-  const [newObraData, setNewObraData] = useState({ empresa: '', obra: '' });
+  const [newObraData, setNewObraData] = useState<ObraDetails>(initialNewObraState);
 
   // --- Carga Inicial de Datos ---
   useEffect(() => {
@@ -62,46 +85,29 @@ export default function App() {
     fetchInitialData();
   }, []);
 
-  // --- Búsqueda de Empresas (Local) ---
+  // --- Búsqueda y Filtrado (Local) ---
   useEffect(() => {
-    if (companyInput.length < 2) {
-      setCompanySuggestions([]);
-      return;
-    }
+    if (companyInput.length < 2) { setCompanySuggestions([]); return; }
     const uniqueCompanies = [...new Set(allData.map(item => item.empresa))];
     const filtered = uniqueCompanies.filter(c => c.toLowerCase().includes(companyInput.toLowerCase()));
     setCompanySuggestions(filtered.slice(0, 10));
   }, [companyInput, allData]);
 
-  // --- Búsqueda de Comunas (Local) ---
   useEffect(() => {
-    if (comunaInput.length < 2) {
-      setComunaSuggestions([]);
-      return;
-    }
+    if (comunaInput.length < 2) { setComunaSuggestions([]); return; }
     const allComunas = regionesYComunas.flatMap(r => r.comunas);
     const filtered = allComunas.filter(c => c.toLowerCase().includes(comunaInput.toLowerCase()));
     setComunaSuggestions(filtered.slice(0, 10));
   }, [comunaInput]);
 
-  // --- Filtrar Obras por Empresa (Local) ---
   useEffect(() => {
-    if (!selectedCompany) {
-      setObras([]);
-      setSelectedObraId('');
-      return;
-    }
+    if (!selectedCompany) { setObras([]); setSelectedObraId(''); return; }
     const filteredObras = allData.filter(item => item.empresa === selectedCompany);
     setObras(filteredObras);
   }, [selectedCompany, allData]);
 
-  // --- Obtener Detalles de Obra (Local) ---
   useEffect(() => {
-    if (!selectedObraId) {
-      setObraDetails(null);
-      setInitialObraDetails(null);
-      return;
-    }
+    if (!selectedObraId) { setObraDetails(null); setInitialObraDetails(null); return; }
     const details = allData.find(item => item.ID === selectedObraId);
     if (details) {
       setObraDetails(details);
@@ -116,6 +122,11 @@ export default function App() {
     setObraDetails(prev => (prev ? { ...prev, [name]: value } : null));
   };
 
+  const handleNewObraInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewObraData(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleAction = async (updates: ObraDetails | {} = {}) => {
     if (!selectedObraId) return;
     setLoading(true);
@@ -127,8 +138,7 @@ export default function App() {
       });
       const data = await response.json();
       if (data.status === 'success') {
-        setMessage(Object.keys(updates).length > 0 ? '✅ Cambios guardados con éxito.' : '✅ Visita registrada con éxito.');
-        // Recargar los datos para ver los cambios reflejados
+        setMessage(Object.keys(updates).length > 0 ? '✅ Cambios guardados.' : '✅ Visita registrada.');
         const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getInitialData' }) });
         const newData = await res.json();
         if(newData.status === 'success') setAllData(newData.data);
@@ -136,11 +146,7 @@ export default function App() {
         throw new Error(data.message);
       }
     } catch (error) {
-      if (error instanceof Error) {
-        setMessage(`❌ Error: ${error.message}`);
-      } else {
-        setMessage(`❌ Ocurrió un error desconocido.`);
-      }
+      setMessage(`❌ Error: ${error instanceof Error ? error.message : 'Desconocido'}`);
     }
     setLoading(false);
   };
@@ -157,8 +163,8 @@ export default function App() {
   };
   
   const handleCreateObra = async () => {
-    if (!newObraData.empresa || !newObraData.obra) {
-      setMessage('❌ Por favor, complete los campos de Empresa y Obra.');
+    if (!newObraData['Empresa'] || !newObraData['Obra'] || !newObraData['Canal']) {
+      setMessage('❌ Los campos Empresa, Obra y Canal son obligatorios.');
       return;
     }
     setLoading(true);
@@ -173,16 +179,12 @@ export default function App() {
         setMessage('✅ Nueva obra creada con éxito.');
         setAllData(prevData => [...prevData, result.data]);
         setIsCreateMode(false);
-        setNewObraData({ empresa: '', obra: '' });
+        setNewObraData(initialNewObraState);
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
-      if (error instanceof Error) {
-        setMessage(`❌ Error al crear la obra: ${error.message}`);
-      } else {
-        setMessage(`❌ Ocurrió un error desconocido.`);
-      }
+      setMessage(`❌ Error al crear la obra: ${error instanceof Error ? error.message : 'Desconocido'}`);
     }
     setLoading(false);
   };
@@ -190,34 +192,19 @@ export default function App() {
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return 'N/A';
-    }
-    return date.toLocaleString('es-CL');
+    return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString('es-CL');
   };
 
   return (
     <div className="container">
       <h1>Registro de Visita de Obra</h1>
-      
       <div className="card">
         {!isCreateMode ? (
           <>
             <div className="form-grid">
               <div className="form-field">
                 <label>1. Empresa</label>
-                <AutocompleteInput
-                  value={companyInput}
-                  onChange={(e) => { setCompanyInput(e.target.value); setSelectedCompany(''); }}
-                  onSuggestionClick={(company) => {
-                    setCompanyInput(company);
-                    setSelectedCompany(company);
-                    setCompanySuggestions([]);
-                  }}
-                  suggestions={companySuggestions}
-                  placeholder="Busque una empresa..."
-                  disabled={loading}
-                />
+                <AutocompleteInput value={companyInput} onChange={(e) => { setCompanyInput(e.target.value); setSelectedCompany(''); }} onSuggestionClick={(company) => { setCompanyInput(company); setSelectedCompany(company); setCompanySuggestions([]); }} suggestions={companySuggestions} placeholder="Busque una empresa..." disabled={loading} />
               </div>
               <div className="form-field">
                 <label>2. Obra</label>
@@ -228,41 +215,41 @@ export default function App() {
               </div>
             </div>
             <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
-              <button onClick={() => setIsCreateMode(true)} className="secondary-button">
-                Crear Nueva Obra
-              </button>
+              <button onClick={() => setIsCreateMode(true)} className="secondary-button">Crear Nueva Obra</button>
             </div>
           </>
         ) : (
           <div>
             <h2>Crear Nueva Obra</h2>
-            <div className="form-grid">
-              <div className="form-field">
-                <label>Nombre de la Empresa</label>
-                <input
-                  type="text"
-                  placeholder="Ej: Constructora XYZ"
-                  value={newObraData.empresa}
-                  onChange={(e) => setNewObraData({ ...newObraData, empresa: e.target.value })}
-                />
+            <div className="form-grid-details">
+              {/* Columna 1 */}
+              <div className="form-column">
+                <div className="form-field"><label>Empresa</label><input type="text" name="Empresa" value={newObraData['Empresa']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Obra</label><input type="text" name="Obra" value={newObraData['Obra']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Vendedor</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
+                <div className="form-field"><label>Canal</label><select name="Canal" value={newObraData['Canal']} onChange={handleNewObraInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                <div className="form-field"><label>Tipo Construcción</label><input type="text" name="Tipo Construcción" value={newObraData['Tipo Construcción']} onChange={handleNewObraInputChange} /></div>
               </div>
-              <div className="form-field">
-                <label>Nombre de la Obra</label>
-                <input
-                  type="text"
-                  placeholder="Ej: Edificio Central"
-                  value={newObraData.obra}
-                  onChange={(e) => setNewObraData({ ...newObraData, obra: e.target.value })}
-                />
+              {/* Columna 2 */}
+              <div className="form-column">
+                <div className="form-field"><label>Región</label><select name="Región" value={newObraData['Región']} onChange={handleNewObraInputChange}><option value="">-- Elija una región --</option>{regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}</select></div>
+                <div className="form-field"><label>Comuna</label><input type="text" name="Comuna" value={newObraData['Comuna']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Estado de Obra</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
+                <div className="form-field"><label>¿Les Vendemos?</label><select name="¿Les Vendemos?" value={newObraData['¿Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+              </div>
+              {/* Columna 3 */}
+              <div className="form-column">
+                <div className="form-field"><label>M²</label><input type="text" name="M²" value={newObraData['M²']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Nombre Contacto</label><input type="text" name="Nombre Contacto" value={newObraData['Nombre Contacto']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Cargo Contacto</label><input type="text" name="Cargo Contacto" value={newObraData['Cargo Contacto']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Email Contacto</label><input type="email" name="Email Contacto" value={newObraData['Email Contacto']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Teléfono Contacto</label><input type="tel" name="Teléfono Contacto" value={newObraData['Teléfono Contacto']} onChange={handleNewObraInputChange} /></div>
               </div>
             </div>
             <div className="actions">
-              <button onClick={() => setIsCreateMode(false)} className="secondary-button">
-                Cancelar
-              </button>
-              <button onClick={handleCreateObra} disabled={loading}>
-                {loading ? 'Guardando...' : 'Guardar Nueva Obra'}
-              </button>
+              <button onClick={() => setIsCreateMode(false)} className="secondary-button">Cancelar</button>
+              <button onClick={handleCreateObra} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Nueva Obra'}</button>
             </div>
           </div>
         )}
@@ -274,15 +261,18 @@ export default function App() {
         <div className="card details">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #dee2e6', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
             <h2 style={{ margin: 0, border: 'none', padding: 0 }}>Detalles de la Obra</h2>
-            <button onClick={() => handleAction()} disabled={loading} className="secondary-button">
-              Registrar Visita (Sin Cambios)
-            </button>
           </div>
 
           <div className="form-grid-details">
             {/* Columna 1 */}
             <div className="form-column">
-              <div className="form-field"><label>Vendedor</label><input type="text" name="Vendedor" value={obraDetails['Vendedor'] || ''} onChange={handleInputChange} /></div>
+              <div className="form-field">
+                <label>Vendedor</label>
+                <select name="Vendedor" value={obraDetails['Vendedor'] || ''} onChange={handleInputChange}>
+                  <option value="">-- Asignar Vendedor --</option>
+                  {vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
               <div className="form-field"><label>Canal</label><select name="Canal" value={obraDetails['Canal'] || ''} onChange={handleInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
               <div className="form-field"><label>Tipo Construcción</label><input type="text" name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Región</label><select name="Región" value={obraDetails['Región'] || ''} onChange={handleInputChange}><option value="">-- Elija una región --</option>{regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}</select></div>
@@ -292,7 +282,7 @@ export default function App() {
                   value={comunaInput}
                   onChange={(e) => {
                     setComunaInput(e.target.value);
-                    handleInputChange(e);
+                    setObraDetails(prev => ({...prev, 'Comuna': e.target.value}));
                   }}
                   onSuggestionClick={(comuna) => {
                     setComunaInput(comuna);

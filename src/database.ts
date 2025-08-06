@@ -5,10 +5,22 @@ export const canalOptions = [
   'Constructora Pequeña',
   'Constructora Mediana',
   'Constructora Grande',
-  'Ferreteria',
+  'Ferretería',
   'Distribuidor',
   'Especialista',
   'Distribuidor Grandes Supericies',
+  'Instalador Eifs',
+];
+
+export const vendedorOptions = [
+  "Andrés Pacheco",
+  "Eduardo Arias",
+  "David Fuentealba",
+  "Diego Montenegro",
+  "Jorge Nario",
+  "Leonel Angulo",
+  "Loreto Medina",
+  "Mónica Valencia"
 ];
 
 // --- Opciones para el Estado de la Obra (ACTUALIZADO) ---
