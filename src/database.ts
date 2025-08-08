@@ -35,8 +35,12 @@ export const estadoObraOptions = [
   'Movimiento de Tierra',
   'Excavaciones',
   'Fundaciones',
-  'Obra Gruesa',
-  'Terminaciones',
+  'Obra Gruesa -20%',
+  'Obra Gruesa 20% ~ 50%',
+  'Obra Gruesa +50%',
+  'Terminaciones -20%',
+  'Terminaciones 20% ~ 50%',
+  'Terminaciones +50%',
   'Terminada',
   'Detenida',
 ];
@@ -462,4 +466,5 @@ export const regionesYComunas = [
     ],
   },
 ];
+
 
