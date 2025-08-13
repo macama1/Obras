@@ -10,6 +10,8 @@ export const canalOptions = [
   'Especialista',
   'Distribuidor Grandes Supericies',
   'Instalador Eifs',
+  'E-Commerce',
+  'Industrial',
 ];
 
 export const vendedorOptions = [
@@ -45,6 +47,15 @@ export const estadoObraOptions = [
   'Detenida',
 ];
 
+export const tipoConstruccionOptions = [
+  "Residencial",
+  "Edificio Departamentos",
+  "Industrial",
+  "Comercial",
+  "Obras Menores",
+  "Educacional",
+  "Casas"
+];
 // --- NUEVA OPCIÓN ---
 export const lesVendemosOptions = ['Sí', 'No'];
 
@@ -466,5 +477,6 @@ export const regionesYComunas = [
     ],
   },
 ];
+
 
 
