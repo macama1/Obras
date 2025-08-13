@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { canalOptions, estadoObraOptions, regionesYComunas, lesVendemosOptions, vendedorOptions } from './database';
+import { canalOptions, estadoObraOptions, regionesYComunas, lesVendemosOptions, vendedorOptions, tipoConstruccionOptions } from './database';
 import './App.css';
 
 const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLdKl0sfkjUbVJWPM6HLG98Cu3G4wfYhgSmEk_pUTPWHhMXgw/exec";
 
 // --- Interfaces ---
-// La interfaz 'Obra' ha sido eliminada ya que no se usaba.
 interface ObraDetails { [key: string]: any; }
 
 // --- Componente de Autocompletado ---
@@ -26,24 +25,7 @@ const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, pl
 
 // --- Estado Inicial para una Nueva Obra ---
 const initialNewObraState = {
-  'Empresa': '',
-  'Obra': '',
-  'Vendedor': '',
-  'Canal': '',
-  'Tipo Construcción': '',
-  'Región': '',
-  'Comuna': '',
-  'Dirección': '',
-  'Estado de Obra': '',
-  '¿Les Vendemos?': '',
-  'Observaciones de Compra': '',
-  'M²': '',
-  'Nombre Contacto': '',
-  'Cargo Contacto': '',
-  'Email Contacto': '',
-  'Teléfono Contacto': '',
-  'Contacto Administrador': '',
-  'Comentarios Última Visita': ''
+  'Empresa': '', 'Obra / PDV': '', 'Vendedor': '', 'Canal': '', 'Tipo Construcción': '', 'Región': '', 'Comuna': '', 'Dirección': '', 'Estado de Obra': '', 'Les Vendemos?': '', 'Observaciones de Compra': '', 'Descripción de la obra o PDV': '', 'M²': '', 'Nombre Contacto': '', 'Cargo Contacto': '', 'Email Contacto': '', 'Teléfono Contacto': '', 'Contacto Administrador': '', 'Comentarios Última Visita': '', 'Rut Empresa': ''
 };
 
 
@@ -84,8 +66,8 @@ export default function App() {
   // --- Búsqueda y Filtrado (Local) ---
   useEffect(() => {
     if (companyInput.length < 2) { setCompanySuggestions([]); return; }
-    const uniqueCompanies = [...new Set(allData.map(item => item.empresa))];
-    const filtered = uniqueCompanies.filter(c => c.toLowerCase().includes(companyInput.toLowerCase()));
+    const uniqueCompanies = [...new Set(allData.map(item => item.Empresa))];
+    const filtered = uniqueCompanies.filter(c => c && c.toLowerCase().includes(companyInput.toLowerCase()));
     setCompanySuggestions(filtered.slice(0, 10));
   }, [companyInput, allData]);
 
@@ -98,7 +80,7 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedCompany) { setObras([]); setSelectedObraId(''); return; }
-    const filteredObras = allData.filter(item => item.empresa === selectedCompany);
+    const filteredObras = allData.filter(item => item.Empresa === selectedCompany);
     setObras(filteredObras);
   }, [selectedCompany, allData]);
 
@@ -199,15 +181,15 @@ export default function App() {
                 <AutocompleteInput value={companyInput} onChange={(e) => { setCompanyInput(e.target.value); setSelectedCompany(''); }} onSuggestionClick={(company) => { setCompanyInput(company); setSelectedCompany(company); setCompanySuggestions([]); }} suggestions={companySuggestions} placeholder="Busque una empresa..." disabled={loading} />
               </div>
               <div className="form-field">
-                <label>2. Obra</label>
+                <label>2. Obra / PDV</label>
                 <select value={selectedObraId} onChange={(e) => setSelectedObraId(e.target.value)} disabled={loading || !selectedCompany}>
                   <option value="">-- Seleccione una obra --</option>
-                  {obras.map(obra => <option key={obra.ID} value={obra.ID}>{obra.ID} - {obra.Obra}</option>)}
+                  {obras.map(obra => <option key={obra.ID} value={obra.ID}>{obra.ID} - {obra['Obra / PDV']}</option>)}
                 </select>
               </div>
             </div>
             <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
-              <button onClick={() => { setIsCreateMode(true); setComunaInput(''); }} className="secondary-button">Crear Nueva Obra</button>
+              <button onClick={() => { setIsCreateMode(true); setSelectedObraId(''); setComunaInput(''); }} className="secondary-button">Crear Nueva Obra</button>
             </div>
           </>
         ) : (
@@ -217,35 +199,21 @@ export default function App() {
               {/* Columna 1 */}
               <div className="form-column">
                 <div className="form-field"><label>Empresa</label><input type="text" name="Empresa" value={newObraData['Empresa']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field"><label>Obra</label><input type="text" name="Obra" value={newObraData['Obra']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Vendedor</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
                 <div className="form-field"><label>Canal</label><select name="Canal" value={newObraData['Canal']} onChange={handleNewObraInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                <div className="form-field"><label>Tipo Construcción</label><input type="text" name="Tipo Construcción" value={newObraData['Tipo Construcción']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={newObraData['Tipo Construcción']} onChange={handleNewObraInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
               </div>
               {/* Columna 2 */}
               <div className="form-column">
                 <div className="form-field"><label>Región</label><select name="Región" value={newObraData['Región']} onChange={handleNewObraInputChange}><option value="">-- Elija una región --</option>{regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}</select></div>
                 <div className="form-field">
                   <label>Comuna</label>
-                  <AutocompleteInput
-                    value={comunaInput}
-                    onChange={(e) => {
-                      setComunaInput(e.target.value);
-                      setNewObraData(prev => ({...prev, 'Comuna': e.target.value}));
-                    }}
-                    onSuggestionClick={(comuna) => {
-                      setComunaInput(comuna);
-                      setNewObraData(prev => ({...prev, 'Comuna': comuna}));
-                      setComunaSuggestions([]);
-                    }}
-                    suggestions={comunaSuggestions}
-                    placeholder="Busque una comuna..."
-                    disabled={loading}
-                  />
+                  <AutocompleteInput value={comunaInput} onChange={(e) => { setComunaInput(e.target.value); setNewObraData(prev => ({...prev, 'Comuna': e.target.value})); }} onSuggestionClick={(comuna) => { setComunaInput(comuna); setNewObraData(prev => ({...prev, 'Comuna': comuna})); setComunaSuggestions([]); }} suggestions={comunaSuggestions} placeholder="Busque una comuna..." disabled={false} />
                 </div>
                 <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Estado de Obra</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
-                <div className="form-field"><label>¿Les Vendemos?</label><select name="¿Les Vendemos?" value={newObraData['¿Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+                <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={newObraData['Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
               </div>
               {/* Columna 3 */}
               <div className="form-column">
@@ -268,59 +236,39 @@ export default function App() {
 
       {obraDetails && !loading && (
         <div className="card details">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #dee2e6', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-            <h2 style={{ margin: 0, border: 'none', padding: 0 }}>Detalles de la Obra</h2>
-          </div>
-
+          <h2>Detalles de la Obra</h2>
           <div className="form-grid-details">
             {/* Columna 1 */}
             <div className="form-column">
-              <div className="form-field">
-                <label>Vendedor</label>
-                <select name="Vendedor" value={obraDetails['Vendedor'] || ''} onChange={handleInputChange}>
-                  <option value="">-- Asignar Vendedor --</option>
-                  {vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-              <div className="form-field"><label>Canal</label><select name="Canal" value={obraDetails['Canal'] || ''} onChange={handleInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-              <div className="form-field"><label>Tipo Construcción</label><input type="text" name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange} /></div>
-              <div className="form-field"><label>Región</label><select name="Región" value={obraDetails['Región'] || ''} onChange={handleInputChange}><option value="">-- Elija una región --</option>{regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}</select></div>
-              <div className="form-field">
-                <label>Comuna</label>
-                <AutocompleteInput
-                  value={comunaInput}
-                  onChange={(e) => {
-                    setComunaInput(e.target.value);
-                    setObraDetails(prev => ({...prev, 'Comuna': e.target.value}));
-                  }}
-                  onSuggestionClick={(comuna) => {
-                    setComunaInput(comuna);
-                    setObraDetails(prev => ({...prev, 'Comuna': comuna}));
-                    setComunaSuggestions([]);
-                  }}
-                  suggestions={comunaSuggestions}
-                  placeholder="Busque una comuna..."
-                  disabled={loading}
-                />
-              </div>
-              <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={obraDetails['Dirección'] || ''} onChange={handleInputChange} /></div>
+              <div className="form-field"><label>Empresa</label><input type="text" value={obraDetails['Empresa'] || ''} disabled /></div>
+              <div className="form-field"><label>Obra / PDV</label><input type="text" value={obraDetails['Obra / PDV'] || ''} disabled /></div>
+              <div className="form-field"><label>Vendedor</label><input type="text" value={obraDetails['Vendedor'] || ''} disabled /></div>
+              <div className="form-field"><label>Canal</label><input type="text" value={obraDetails['Canal'] || ''} disabled /></div>
+              <div className="form-field"><label>Región</label><input type="text" value={obraDetails['Región'] || ''} disabled /></div>
+              <div className="form-field"><label>Comuna</label><input type="text" value={obraDetails['Comuna'] || ''} disabled /></div>
             </div>
             {/* Columna 2 */}
             <div className="form-column">
+              <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
+              <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={obraDetails['Dirección'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Estado de Obra</label><select name="Estado de Obra" value={obraDetails['Estado de Obra'] || ''} onChange={handleInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
-              <div className="form-field"><label>¿Les Vendemos?</label><select name="¿Les Vendemos?" value={obraDetails['¿Les Vendemos?'] || ''} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+              <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?']} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
               <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={obraDetails['Observaciones de Compra'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
-              <div className="form-field"><label>M²</label><input type="text" name="M²" value={obraDetails['M²'] || ''} onChange={handleInputChange} /></div>
-              <div className="form-field"><label>Nombre Contacto</label><input type="text" name="Nombre Contacto" value={obraDetails['Nombre Contacto'] || ''} onChange={handleInputChange} /></div>
-              <div className="form-field"><label>Cargo Contacto</label><input type="text" name="Cargo Contacto" value={obraDetails['Cargo Contacto'] || ''} onChange={handleInputChange} /></div>
             </div>
             {/* Columna 3 */}
             <div className="form-column">
+              <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={obraDetails['Descripción de la obra o PDV'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
+              <div className="form-field"><label>M²</label><input type="text" name="M²" value={obraDetails['M²'] || ''} onChange={handleInputChange} /></div>
+              <div className="form-field"><label>Nombre Contacto</label><input type="text" name="Nombre Contacto" value={obraDetails['Nombre Contacto'] || ''} onChange={handleInputChange} /></div>
+              <div className="form-field"><label>Cargo Contacto</label><input type="text" name="Cargo Contacto" value={obraDetails['Cargo Contacto'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Email Contacto</label><input type="email" name="Email Contacto" value={obraDetails['Email Contacto'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Teléfono Contacto</label><input type="tel" name="Teléfono Contacto" value={obraDetails['Teléfono Contacto'] || ''} onChange={handleInputChange} /></div>
-              <div className="form-field"><label>Contacto Administrador</label><input type="text" name="Contacto Administrador" value={obraDetails['Contacto Administrador'] || ''} onChange={handleInputChange} /></div>
+            </div>
+            {/* Fila Inferior */}
+            <div className="form-column" style={{gridColumn: '1 / -1'}}>
+              <div className="form-field"><label>Comentarios Última Visita</label><textarea name="Comentarios Última Visita" value={obraDetails['Comentarios Última Visita'] || ''} onChange={handleInputChange} rows={4}></textarea></div>
+              <div className="form-field"><label>Rut Empresa</label><input type="text" value={obraDetails['Rut Empresa'] || ''} disabled /></div>
               <div className="form-field"><label>Fecha Última Visita</label><input type="text" value={formatDate(obraDetails['Fecha Última Visita'])} disabled /></div>
-              <div className="form-field full-width"><label>Comentarios Última Visita</label><textarea name="Comentarios Última Visita" value={obraDetails['Comentarios Última Visita'] || ''} onChange={handleInputChange} rows={4}></textarea></div>
             </div>
           </div>
           <div className="actions">
