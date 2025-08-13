@@ -1,19 +1,18 @@
-/* --- Importación de Fuente y Variables Globales --- */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+/* --- Importación de Fuente y Variables Globales (Tema Natstone) --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
 :root {
-  --font-family: 'Roboto', sans-serif;
-  --primary-color: #007bff; /* Azul primario */
-  --primary-hover-color: #0056b3;
-  --secondary-color: #6c757d; /* Gris para botones secundarios */
-  --secondary-hover-color: #5a6268;
-  --background-color: #f8f9fa; /* Fondo gris claro */
+  --font-family: 'Inter', sans-serif;
+  --primary-color: #f97316; /* Naranjo Natstone */
+  --primary-hover-color: #ea580c; /* Naranjo más oscuro */
+  --secondary-color: #4b5563; /* Gris oscuro para botones secundarios */
+  --secondary-hover-color: #374151;
+  --background-color: #f3f4f6; /* Fondo gris muy claro */
   --card-background: #ffffff;
-  --text-color: #343a40; /* Texto gris oscuro */
-  --border-color: #dee2e6;
-  --success-color: #28a745;
-  --error-color: #dc3545;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --text-color: #1f2937; /* Texto principal (casi negro) */
+  --text-light-color: #6b7280; /* Texto secundario (gris) */
+  --border-color: #d1d5db;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   --border-radius: 8px;
 }
 
@@ -33,8 +32,7 @@ body {
   padding: 1rem;
 }
 
-h1,
-h2 {
+h1, h2 {
   font-weight: 700;
   color: var(--text-color);
 }
@@ -49,8 +47,6 @@ h2 {
   margin-top: 0;
   margin-bottom: 1.5rem;
   font-size: 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.75rem;
 }
 
 /* --- Estructura de Tarjetas (Cards) --- */
@@ -60,6 +56,7 @@ h2 {
   box-shadow: var(--shadow);
   padding: 2rem;
   margin-bottom: 2rem;
+  border: 1px solid var(--border-color);
 }
 
 /* --- Diseño de Grillas para Formularios --- */
@@ -96,12 +93,13 @@ h2 {
 label {
   font-weight: 500;
   font-size: 0.9rem;
+  color: var(--text-light-color);
 }
 
-input[type='text'],
-input[type='email'],
-input[type='tel'],
-input[type='date'],
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="date"],
 select,
 textarea {
   width: 100%;
@@ -112,7 +110,7 @@ textarea {
   font-size: 1rem;
   transition: border-color 0.2s, box-shadow 0.2s;
   background-color: #fff;
-  color: var(--text-color); /* <-- LÍNEA AÑADIDA PARA CORREGIR EL ERROR */
+  color: var(--text-color);
 }
 
 input:focus,
@@ -120,12 +118,13 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
 }
 
 input:disabled {
-  background-color: #e9ecef;
+  background-color: #f3f4f6;
   cursor: not-allowed;
+  color: var(--text-light-color);
 }
 
 textarea {
@@ -139,7 +138,6 @@ textarea {
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 2rem;
-  border-top: 1px solid var(--border-color);
   padding-top: 1.5rem;
 }
 
@@ -162,7 +160,7 @@ button:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-/* Botón Primario */
+/* Botón Primario (Naranjo) */
 button {
   background-color: var(--primary-color);
   color: white;
@@ -172,7 +170,7 @@ button:hover:not(:disabled) {
   background-color: var(--primary-hover-color);
 }
 
-/* Botón Secundario */
+/* Botón Secundario (Gris) */
 .secondary-button {
   background-color: var(--secondary-color);
   color: white;
@@ -200,7 +198,7 @@ button:hover:not(:disabled) {
   list-style: none;
   padding: 0;
   margin-top: -1px;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
 }
 
 .suggestions-list li {
@@ -214,8 +212,9 @@ button:hover:not(:disabled) {
 }
 
 .suggestions-list li:hover {
-  background-color: #f0f0f0;
+  background-color: #f9fafb;
 }
+
 
 /* --- Clases de Ayuda --- */
 .loader {
@@ -223,7 +222,7 @@ button:hover:not(:disabled) {
   padding: 2rem;
   font-size: 1.2rem;
   font-weight: 500;
-  color: var(--secondary-color);
+  color: var(--text-light-color);
 }
 
 .message {
