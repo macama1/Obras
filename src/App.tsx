@@ -171,30 +171,33 @@ export default function App() {
 
   return (
     <div className="container">
-      <h1>Registro de Visita de Obra</h1>
+      <h1>Registro de Cartera</h1>
       <div className="card">
         {!isCreateMode ? (
           <>
             <div className="form-grid">
               <div className="form-field">
-                <label>1. Empresa</label>
+                <label>Empresa</label>
                 <AutocompleteInput value={companyInput} onChange={(e) => { setCompanyInput(e.target.value); setSelectedCompany(''); }} onSuggestionClick={(company) => { setCompanyInput(company); setSelectedCompany(company); setCompanySuggestions([]); }} suggestions={companySuggestions} placeholder="Busque una empresa..." disabled={loading} />
               </div>
               <div className="form-field">
-                <label>2. Obra / PDV</label>
+                <label>Obra / PDV</label>
                 <select value={selectedObraId} onChange={(e) => setSelectedObraId(e.target.value)} disabled={loading || !selectedCompany}>
-                  <option value="">-- Seleccione una obra --</option>
+                  <option value="">-- Seleccione un PdV --</option>
                   {obras.map(obra => <option key={obra.ID} value={obra.ID}>{obra.ID} - {obra['Obra / PDV']}</option>)}
                 </select>
               </div>
             </div>
-            <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
-              <button onClick={() => { setIsCreateMode(true); setSelectedObraId(''); setComunaInput(''); }} className="secondary-button">Crear Nueva Obra</button>
-            </div>
+            {/* --- LÓGICA ACTUALIZADA AQUÍ --- */}
+            {!selectedObraId && (
+              <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
+                <button onClick={() => { setIsCreateMode(true); setSelectedObraId(''); setComunaInput(''); }} className="secondary-button">Agregar Nuevo Punto de Venta</button>
+              </div>
+            )}
           </>
         ) : (
           <div>
-            <h2>Crear Nueva Obra</h2>
+            <h2>Agregar Nuevo PdV</h2>
             <div className="form-grid-details">
               {/* Columna 1 */}
               <div className="form-column">
