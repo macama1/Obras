@@ -25,11 +25,7 @@ export const vendedorOptions = [
   "Mónica Valencia"
 ];
 
-// --- Opciones para el Estado de la Obra (ACTUALIZADO) ---
 export const estadoObraOptions = [
-  'Permiso de Anteproyecto',
-  'Permisos por Construir',
-  'Autorización de obra preliminar',
   'Cierre Perimetral',
   'Limpieza y Demolición',
   'Instalación de Faena',
@@ -477,6 +473,7 @@ export const regionesYComunas = [
     ],
   },
 ];
+
 
 
 
