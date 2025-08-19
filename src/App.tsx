@@ -271,7 +271,7 @@ export default function App() {
             <div className="form-column" style={{gridColumn: '1 / -1'}}>
               <div className="form-field"><label>Comentarios Última Visita</label><textarea name="Comentarios Última Visita" value={obraDetails['Comentarios Última Visita'] || ''} onChange={handleInputChange} rows={4}></textarea></div>
               <div className="form-field"><label>Rut Empresa</label><input type="text" value={obraDetails['Rut Empresa'] || ''} disabled /></div>
-              <div className="form-field"><label>Fecha Última Visita</label><input type="text" value={formatDate(obraDetails['Fecha Última Visita'])} disabled /></div>
+              <div className="form-field"><label>Última Actualización</label><input type="text" value={formatDate(obraDetails['Última Actualización'])} disabled /></div>
             </div>
           </div>
           <div className="actions">
