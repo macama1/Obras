@@ -1,6 +1,90 @@
 import React, { useState, useEffect } from 'react';
-import { canalOptions, estadoObraOptions, regionesYComunas, lesVendemosOptions, vendedorOptions, tipoConstruccionOptions } from './database';
-import './App.css';
+
+// --- Contenido de database.ts y App.css movido aquí para resolver el error de compilación ---
+
+// --- Base de Datos Local ---
+export const canalOptions = [
+  'Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande', 'Ferretería', 'Distribuidor', 'Especialista', 'Distribuidor Grandes Supericies', 'Instalador Eifs', 'E-Commerce', 'Industrial',
+];
+export const vendedorOptions = [
+  "Andrés Pacheco", "Eduardo Arias", "David Fuentealba", "Diego Montenegro", "Jorge Nario", "Leonel Angulo", "Loreto Medina", "Mónica Valencia"
+];
+export const estadoObraOptions = [
+  'Cierre Perimetral', 'Limpieza y Demolición', 'Instalación de Faena', 'Obras Prelimiminares', 'Movimiento de Tierra', 'Excavaciones', 'Fundaciones', 'Obra Gruesa -20%', 'Obra Gruesa 20% ~ 50%', 'Obra Gruesa +50%', 'Terminaciones -20%', 'Terminaciones 20% ~ 50%', 'Terminaciones +50%', 'Terminada', 'Detenida',
+];
+export const tipoConstruccionOptions = [
+  "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas"
+];
+export const lesVendemosOptions = ['Sí', 'No'];
+export const regionesYComunas = [
+    { region: 'Arica y Parinacota', comunas: ['Arica', 'Camarones', 'Putre', 'General Lagos']},
+    { region: 'Tarapacá', comunas: ['Iquique', 'Alto Hospicio', 'Pozo Almonte', 'Camiña', 'Colchane', 'Huara', 'Pica']},
+    { region: 'Antofagasta', comunas: ['Antofagasta', 'Mejillones', 'Sierra Gorda', 'Taltal', 'Calama', 'Ollagüe', 'San Pedro de Atacama', 'Tocopilla', 'María Elena']},
+    { region: 'Atacama', comunas: ['Copiapó', 'Caldera', 'Tierra Amarilla', 'Chañaral', 'Diego de Almagro', 'Vallenar', 'Alto del Carmen', 'Freirina', 'Huasco']},
+    { region: 'Coquimbo', comunas: ['La Serena', 'Coquimbo', 'Andacollo', 'La Higuera', 'Paiguano', 'Vicuña', 'Illapel', 'Canela', 'Los Vilos', 'Salamanca', 'Ovalle', 'Combarbalá', 'Monte Patria', 'Punitaqui', 'Río Hurtado']},
+    { region: 'Valparaíso', comunas: ['Valparaíso', 'Casablanca', 'Concón', 'Juan Fernández', 'Puchuncaví', 'Quintero', 'Viña del Mar', 'Isla de Pascua', 'Los Andes', 'Calle Larga', 'Rinconada', 'San Esteban', 'La Ligua', 'Cabildo', 'Papudo', 'Petorca', 'Zapallar', 'Quillota', 'Calera', 'Hijuelas', 'La Cruz', 'Nogales', 'San Antonio', 'Algarrobo', 'Cartagena', 'El Quisco', 'El Tabo', 'Santo Domingo', 'San Felipe', 'Catemu', 'Llaillay', 'Panquehue', 'Putaendo', 'Santa María', 'Quilpué', 'Limache', 'Olmué', 'Villa Alemana']},
+    { region: 'Metropolitana de Santiago', comunas: ['Cerrillos', 'Cerro Navia', 'Conchalí', 'El Bosque', 'Estación Central', 'Huechuraba', 'Independencia', 'La Cisterna', 'La Florida', 'La Granja', 'La Pintana', 'La Reina', 'Las Condes', 'Lo Barnechea', 'Lo Espejo', 'Lo Prado', 'Macul', 'Maipú', 'Ñuñoa', 'Pedro Aguirre Cerda', 'Peñalolén', 'Providencia', 'Pudahuel', 'Quilicura', 'Quinta Normal', 'Recoleta', 'Renca', 'San Joaquín', 'San Miguel', 'San Ramón', 'Santiago', 'Vitacura', 'Padre Hurtado', 'Peñaflor', 'Talagante', 'El Monte', 'Isla de Maipo', 'Colina', 'Lampa', 'Tiltil', 'San José de Maipo', 'Pirque', 'Puente Alto', 'San Bernardo', 'Buin', 'Calera de Tango', 'Paine']},
+    { region: "Libertador General Bernardo O'Higgins", comunas: ['Rancagua', 'Codegua', 'Coinco', 'Coltauco', 'Doñihue', 'Graneros', 'Las Cabras', 'Machalí', 'Malloa', 'Mostazal', 'Olivar', 'Peumo', 'Pichidegua', 'Quinta de Tilcoco', 'Rengo', 'Requínoa', 'San Vicente', 'Pichilemu', 'La Estrella', 'Litueche', 'Marchihue', 'Navidad', 'Paredones', 'San Fernando', 'Chépica', 'Chimbarongo', 'Lolol', 'Nancagua', 'Palmilla', 'Peralillo', 'Placilla', 'Pumanque', 'Santa Cruz']},
+    { region: 'Maule', comunas: ['Talca', 'Constitución', 'Curepto', 'Empedrado', 'Maule', 'Pelarco', 'Pencahue', 'Río Claro', 'San Clemente', 'San Rafael', 'Cauquenes', 'Chanco', 'Pelluhue', 'Curicó', 'Hualañé', 'Licantén', 'Molina', 'Rauco', 'Romeral', 'Sagrada Familia', 'Teno', 'Vichuquén', 'Linares', 'Colbún', 'Longaví', 'Parral', 'Retiro', 'San Javier', 'Villa Alegre', 'Yerbas Buenas']},
+    { region: 'Ñuble', comunas: ['Cobquecura', 'Coelemu', 'Ninhue', 'Portezuelo', 'Quirihue', 'Ránquil', 'Treguaco', 'Bulnes', 'Chillán Viejo', 'Chillán', 'El Carmen', 'Pemuco', 'Pinto', 'Quillón', 'San Ignacio', 'Yungay', 'Coihueco', 'Ñiquén', 'San Carlos', 'San Fabián', 'San Nicolás']},
+    { region: 'Biobío', comunas: ['Concepción', 'Coronel', 'Chiguayante', 'Florida', 'Hualqui', 'Lota', 'Penco', 'San Pedro de la Paz', 'Santa Juana', 'Talcahuano', 'Tomé', 'Hualpén', 'Lebu', 'Arauco', 'Cañete', 'Contulmo', 'Curanilahue', 'Los Álamos', 'Tirúa', 'Los Ángeles', 'Antuco', 'Cabrero', 'Laja', 'Mulchén', 'Nacimiento', 'Negrete', 'Quilaco', 'Quilleco', 'San Rosendo', 'Santa Bárbara', 'Tucapel', 'Yumbel', 'Alto Biobío']},
+    { region: 'La Araucanía', comunas: ['Temuco', 'Carahue', 'Cunco', 'Curarrehue', 'Freire', 'Galvarino', 'Gorbea', 'Loncoche', 'Melipeuco', 'Nueva Imperial', 'Padre las Casas', 'Perquenco', 'Pitrufquén', 'Pucón', 'Saavedra', 'Teodoro Schmidt', 'Toltén', 'Vilcún', 'Villarrica', 'Cholchol', 'Angol', 'Collipulli', 'Curacautín', 'Ercilla', 'Lonquimay', 'Los Sauces', 'Lumaco', 'Purén', 'Renaico', 'Traiguén', 'Victoria']},
+    { region: 'Los Ríos', comunas: ['Valdivia', 'Corral', 'Lanco', 'Los Lagos', 'Máfil', 'Mariquina', 'Paillaco', 'Panguipulli', 'La Unión', 'Futrono', 'Lago Ranco', 'Río Bueno']},
+    { region: 'Los Lagos', comunas: ['Puerto Montt', 'Calbuco', 'Cochamó', 'Fresia', 'Frutillar', 'Los Muermos', 'Llanquihue', 'Maullín', 'Puerto Varas', 'Castro', 'Ancud', 'Chonchi', 'Curaco de Vélez', 'Dalcahue', 'Puqueldón', 'Queilén', 'Quellón', 'Quemchi', 'Quinchao', 'Osorno', 'Puerto Octay', 'Purranque', 'Puyehue', 'Río Negro', 'San Juan de la Costa', 'San Pablo', 'Chaitén', 'Futaleufú', 'Hualaihué', 'Palena']},
+    { region: 'Aysén del General Carlos Ibáñez del Campo', comunas: ['Coyhaique', 'Lago Verde', 'Aysén', 'Cisnes', 'Guaitecas', 'Cochrane', "O'Higgins", 'Tortel', 'Chile Chico', 'Río Ibáñez']},
+    { region: 'Magallanes y de la Antártica Chilena', comunas: ['Punta Arenas', 'Laguna Blanca', 'Río Verde', 'San Gregorio', 'Cabo de Hornos (Ex Navarino)', 'Antártica', 'Porvenir', 'Primavera', 'Timaukel', 'Natales', 'Torres del Paine']},
+];
+
+// --- Componente de Estilos (reemplaza App.css) ---
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+    :root {
+      --font-family: 'Inter', sans-serif;
+      --primary-color: #f97316; /* Naranjo Natstone */
+      --primary-hover-color: #ea580c;
+      --secondary-color: #4b5563; /* Gris oscuro */
+      --secondary-hover-color: #374151;
+      --background-color: #f3f4f6;
+      --card-background: #ffffff;
+      --text-color: #1f2937;
+      --text-light-color: #6b7280;
+      --border-color: #d1d5db;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      --border-radius: 8px;
+    }
+    body { margin: 0; font-family: var(--font-family); background-color: var(--background-color); color: var(--text-color); }
+    .container { max-width: 1200px; margin: 2rem auto; padding: 1rem; }
+    h1, h2 { font-weight: 700; color: var(--text-color); }
+    h1 { text-align: center; margin-bottom: 2rem; font-size: 2.25rem; }
+    h2 { margin: 0; font-size: 1.5rem; }
+    .card { background-color: var(--card-background); border-radius: var(--border-radius); box-shadow: var(--shadow); padding: 2rem; margin-bottom: 2rem; border: 1px solid var(--border-color); }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; align-items: end; }
+    .form-grid-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+    .form-column { display: flex; flex-direction: column; gap: 1.25rem; }
+    .form-field { display: flex; flex-direction: column; gap: 0.5rem; }
+    .form-field.full-width { grid-column: 1 / -1; }
+    label { font-weight: 500; font-size: 0.9rem; color: var(--text-light-color); }
+    input[type="text"], input[type="email"], input[type="tel"], select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); font-size: 1rem; transition: all 0.2s; background-color: #fff; color: var(--text-color); box-sizing: border-box; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2); }
+    input:disabled, textarea:disabled { background-color: #f3f4f6; cursor: not-allowed; color: #9ca3af; }
+    .actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; padding-top: 1.5rem; }
+    button { padding: 0.75rem 1.5rem; border: none; border-radius: var(--border-radius); font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; background-color: var(--primary-color); color: white; }
+    button:hover:not(:disabled) { background-color: var(--primary-hover-color); }
+    .secondary-button { background-color: var(--secondary-color); }
+    .secondary-button:hover:not(:disabled) { background-color: var(--secondary-hover-color); }
+    .autocomplete-container { position: relative; }
+    .suggestions-list { position: absolute; background-color: white; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 var(--border-radius) var(--border-radius); width: 100%; max-height: 200px; overflow-y: auto; z-index: 1000; list-style: none; padding: 0; margin-top: -1px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+    .suggestions-list li { padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color); }
+    .suggestions-list li:last-child { border-bottom: none; }
+    .suggestions-list li:hover { background-color: #f9fafb; }
+    .loader { text-align: center; padding: 2rem; font-size: 1.2rem; color: var(--text-light-color); }
+    .message { text-align: center; padding: 1rem; margin: 1rem 0; border-radius: var(--border-radius); font-weight: 500; }
+    @media (max-width: 992px) { .form-grid-details { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 768px) { h1 { font-size: 1.8rem; } .card { padding: 1.5rem; } .form-grid-details { grid-template-columns: 1fr; } .actions { flex-direction: column; } button { width: 100%; } }
+  `}</style>
+);
+
 
 const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLdKl0sfkjUbVJWPM6HLG98Cu3G4wfYhgSmEk_pUTPWHhMXgw/exec";
 
@@ -25,7 +109,7 @@ const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, pl
 
 // --- Estado Inicial para una Nueva Obra ---
 const initialNewObraState = {
-  'Empresa': '', 'Obra / PDV': '', 'Vendedor': '', 'Canal': '', 'Tipo Construcción': '', 'Región': '', 'Comuna': '', 'Dirección': '', 'Estado de Obra': '', 'Les Vendemos?': '', 'Observaciones de Compra': '', 'Descripción de la obra o PDV': '', 'M²': '', 'Nombre Contacto': '', 'Cargo Contacto': '', 'Email Contacto': '', 'Teléfono Contacto': '', 'Contacto Administrador': '', 'Comentarios Última Visita': '', 'Rut Empresa': ''
+  'Empresa': '', 'Obra / PDV': '', 'Vendedor': '', 'Canal': '', 'Tipo Construcción': '', 'Región': '', 'Comuna': '', 'Dirección': '', 'Estado de Obra': '', 'Les Vendemos?': '', 'Observaciones de Compra': '', 'Descripción de la obra o PDV': '', 'M²': '', 'Nombre Contacto': '', 'Cargo Contacto': '', 'Email Contacto': '', 'Teléfono Contacto': '', 'Contacto Administrador': '', 'Comentarios Última Visita': '', 'Rut Empresa': '', 'Monto Presupuesto': '', 'Fecha Fin Obra': ''
 };
 
 
@@ -171,6 +255,7 @@ export default function App() {
 
   return (
     <div className="container">
+      <GlobalStyles />
       <h1>Registro de Cartera</h1>
       <div className="card">
         {!isCreateMode ? (
@@ -188,7 +273,6 @@ export default function App() {
                 </select>
               </div>
             </div>
-            {/* --- LÓGICA ACTUALIZADA AQUÍ --- */}
             {!selectedObraId && (
               <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
                 <button onClick={() => { setIsCreateMode(true); setSelectedObraId(''); setComunaInput(''); }} className="secondary-button">Agregar Nuevo Punto de Venta</button>
@@ -215,11 +299,13 @@ export default function App() {
                   <AutocompleteInput value={comunaInput} onChange={(e) => { setComunaInput(e.target.value); setNewObraData(prev => ({...prev, 'Comuna': e.target.value})); }} onSuggestionClick={(comuna) => { setComunaInput(comuna); setNewObraData(prev => ({...prev, 'Comuna': comuna})); setComunaSuggestions([]); }} suggestions={comunaSuggestions} placeholder="Busque una comuna..." disabled={false} />
                 </div>
                 <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field"><label>Estado de Obra</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
-                <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={newObraData['Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+                <div className="form-field"><label>Monto Presupuesto</label><input type="text" name="Monto Presupuesto" value={newObraData['Monto Presupuesto']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Fecha Fin Obra</label><input type="text" name="Fecha Fin Obra" value={newObraData['Fecha Fin Obra']} onChange={handleNewObraInputChange} /></div>
               </div>
               {/* Columna 3 */}
               <div className="form-column">
+                <div className="form-field"><label>Estado de Obra</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
+                <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={newObraData['Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
                 <div className="form-field"><label>M²</label><input type="text" name="M²" value={newObraData['M²']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Nombre Contacto</label><input type="text" name="Nombre Contacto" value={newObraData['Nombre Contacto']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Cargo Contacto</label><input type="text" name="Cargo Contacto" value={newObraData['Cargo Contacto']} onChange={handleNewObraInputChange} /></div>
@@ -237,26 +323,28 @@ export default function App() {
 
       {loading && !isCreateMode && <div className="loader">Cargando...</div>}
 
-      {obraDetails && !loading && (
+      {obraDetails && !loading && !isCreateMode && (
         <div className="card details">
           <h2>Detalles de la Obra</h2>
           <div className="form-grid-details">
             {/* Columna 1 */}
             <div className="form-column">
               <div className="form-field"><label>Empresa</label><input type="text" value={obraDetails['Empresa'] || ''} disabled /></div>
-              <div className="form-field"><label>Obra / PDV</label><input type="text" value={obraDetails['Obra / PDV'] || ''} disabled /></div>
+              <div className="form-field"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={obraDetails['Obra / PDV'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Vendedor</label><input type="text" value={obraDetails['Vendedor'] || ''} disabled /></div>
               <div className="form-field"><label>Canal</label><input type="text" value={obraDetails['Canal'] || ''} disabled /></div>
               <div className="form-field"><label>Región</label><input type="text" value={obraDetails['Región'] || ''} disabled /></div>
               <div className="form-field"><label>Comuna</label><input type="text" value={obraDetails['Comuna'] || ''} disabled /></div>
+              <div className="form-field"><label>Dirección</label><input type="text" value={obraDetails['Dirección'] || ''} disabled /></div>
             </div>
             {/* Columna 2 */}
             <div className="form-column">
               <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
-              <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={obraDetails['Dirección'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Estado de Obra</label><select name="Estado de Obra" value={obraDetails['Estado de Obra'] || ''} onChange={handleInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
               <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?']} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
               <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={obraDetails['Observaciones de Compra'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
+              <div className="form-field"><label>Monto Presupuesto</label><input type="text" name="Monto Presupuesto" value={obraDetails['Monto Presupuesto'] || ''} onChange={handleInputChange} /></div>
+              <div className="form-field"><label>Fecha Fin Obra</label><input type="text" name="Fecha Fin Obra" value={obraDetails['Fecha Fin Obra'] || ''} onChange={handleInputChange} /></div>
             </div>
             {/* Columna 3 */}
             <div className="form-column">
@@ -269,9 +357,10 @@ export default function App() {
             </div>
             {/* Fila Inferior */}
             <div className="form-column" style={{gridColumn: '1 / -1'}}>
+              <div className="form-field"><label>Acciones Última Reunion</label><textarea value={obraDetails['Acciones Última Reunion'] || ''} rows={2} disabled></textarea></div>
               <div className="form-field"><label>Comentarios Última Visita</label><textarea name="Comentarios Última Visita" value={obraDetails['Comentarios Última Visita'] || ''} onChange={handleInputChange} rows={4}></textarea></div>
               <div className="form-field"><label>Rut Empresa</label><input type="text" value={obraDetails['Rut Empresa'] || ''} disabled /></div>
-              <div className="form-field"><label>Última Actualización</label><input type="text" value={formatDate(obraDetails['Última Actualización'])} disabled /></div>
+              <div className="form-field"><label>Fecha Última Visita</label><input type="text" value={formatDate(obraDetails['Última Actualización'])} disabled /></div>
             </div>
           </div>
           <div className="actions">
@@ -286,3 +375,4 @@ export default function App() {
     </div>
   );
 }
+
