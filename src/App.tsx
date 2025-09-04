@@ -13,7 +13,7 @@ export const estadoObraOptions = [
   'Cierre Perimetral', 'Limpieza y Demolición', 'Instalación de Faena', 'Obras Prelimiminares', 'Movimiento de Tierra', 'Excavaciones', 'Fundaciones', 'Obra Gruesa -20%', 'Obra Gruesa 20% ~ 50%', 'Obra Gruesa +50%', 'Terminaciones -20%', 'Terminaciones 20% ~ 50%', 'Terminaciones +50%', 'Terminada', 'Detenida',
 ];
 export const tipoConstruccionOptions = [
-  "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas"
+  "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas", "Edificios de Oficinas", "Culto", "Vial"
 ];
 export const lesVendemosOptions = ['Sí', 'No'];
 export const regionesYComunas = [
