@@ -256,7 +256,7 @@ export default function App() {
   return (
     <div className="container">
       <GlobalStyles />
-      <h1>Registro de Cartera</h1>
+      <h1>Cartera Activa</h1>
       <div className="card">
         {!isCreateMode ? (
           <>
