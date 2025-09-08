@@ -401,7 +401,7 @@ export default function App() {
           </div>
           <div className="actions">
             <button onClick={handleSaveChanges} disabled={loading}>
-              {loading ? 'Guardando...' : 'Guardar Cambios y Registrar Visita'}
+              {loading ? 'Guardando...' : 'Registrar Actualización'}
             </button>
           </div>
         </div>
