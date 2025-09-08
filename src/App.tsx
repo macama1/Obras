@@ -10,10 +10,10 @@ export const vendedorOptions = [
   "Andrés Pacheco", "Eduardo Arias", "David Fuentealba", "Diego Montenegro", "Jorge Nario", "Leonel Angulo", "Loreto Medina", "Mónica Valencia"
 ];
 export const estadoObraOptions = [
-  'Cierre Perimetral', 'Limpieza y Demolición', 'Instalación de Faena', 'Obras Prelimiminares', 'Movimiento de Tierra', 'Excavaciones', 'Fundaciones', 'Obra Gruesa -20%', 'Obra Gruesa 20% ~ 50%', 'Obra Gruesa +50%', 'Terminaciones -20%', 'Terminaciones 20% ~ 50%', 'Terminaciones +50%', 'Terminada', 'Detenida',
+  'Cierre Perimetral', 'Limpieza y Demolición', 'Instalación de Faena', 'Obras Preliminares', 'Movimiento de Tierra', 'Excavaciones', 'Fundaciones', 'Obra Gruesa -20%', 'Obra Gruesa 20% ~ 50%', 'Obra Gruesa +50%', 'Terminaciones -20%', 'Terminaciones 20% ~ 50%', 'Terminaciones +50%', 'Terminada', 'Detenida',
 ];
 export const tipoConstruccionOptions = [
-  "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas", "Edificios de Oficinas", "Culto", "Vial"
+  "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas"
 ];
 export const lesVendemosOptions = ['Sí', 'No'];
 export const regionesYComunas = [
@@ -34,6 +34,7 @@ export const regionesYComunas = [
     { region: 'Aysén del General Carlos Ibáñez del Campo', comunas: ['Coyhaique', 'Lago Verde', 'Aysén', 'Cisnes', 'Guaitecas', 'Cochrane', "O'Higgins", 'Tortel', 'Chile Chico', 'Río Ibáñez']},
     { region: 'Magallanes y de la Antártica Chilena', comunas: ['Punta Arenas', 'Laguna Blanca', 'Río Verde', 'San Gregorio', 'Cabo de Hornos (Ex Navarino)', 'Antártica', 'Porvenir', 'Primavera', 'Timaukel', 'Natales', 'Torres del Paine']},
 ];
+
 
 // --- Componente de Estilos (reemplaza App.css) ---
 const GlobalStyles = () => (
@@ -65,7 +66,7 @@ const GlobalStyles = () => (
     .form-field { display: flex; flex-direction: column; gap: 0.5rem; }
     .form-field.full-width { grid-column: 1 / -1; }
     label { font-weight: 500; font-size: 0.9rem; color: var(--text-light-color); }
-    input[type="text"], input[type="email"], input[type="tel"], select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); font-size: 1rem; transition: all 0.2s; background-color: #fff; color: var(--text-color); box-sizing: border-box; }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="date"], select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); font-size: 1rem; transition: all 0.2s; background-color: #fff; color: var(--text-color); box-sizing: border-box; font-family: inherit; }
     input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2); }
     input:disabled, textarea:disabled { background-color: #f3f4f6; cursor: not-allowed; color: #9ca3af; }
     .actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; padding-top: 1.5rem; }
@@ -115,6 +116,7 @@ const initialNewObraState = {
 
 export default function App() {
   // --- Estados ---
+  const [selectedRegion, setSelectedRegion] = useState('');
   const [allData, setAllData] = useState<ObraDetails[]>([]);
   const [companyInput, setCompanyInput] = useState('');
   const [companySuggestions, setCompanySuggestions] = useState<string[]>([]);
@@ -125,27 +127,36 @@ export default function App() {
   const [initialObraDetails, setInitialObraDetails] = useState<ObraDetails | null>(null);
   const [comunaInput, setComunaInput] = useState('');
   const [comunaSuggestions, setComunaSuggestions] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [newObraData, setNewObraData] = useState<ObraDetails>(initialNewObraState);
 
-  // --- Carga Inicial de Datos ---
+  // --- Carga de Datos por Región ---
   useEffect(() => {
-    const fetchInitialData = async () => {
+    if (!selectedRegion) {
+      setAllData([]);
+      return;
+    }
+    const fetchDataByRegion = async () => {
+      setLoading(true);
+      setMessage('');
       try {
-        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getInitialData' }) });
+        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getDataByRegion', region: selectedRegion }) });
         const data = await response.json();
         if (data.status === 'success') {
           setAllData(data.data);
+        } else {
+          throw new Error(data.message || 'Error del servidor');
         }
       } catch (error) {
-        setMessage('❌ No se pudieron cargar los datos iniciales.');
+        setMessage('❌ No se pudieron cargar los datos para la región seleccionada.');
+        setAllData([]);
       }
       setLoading(false);
     };
-    fetchInitialData();
-  }, []);
+    fetchDataByRegion();
+  }, [selectedRegion]);
 
   // --- Búsqueda y Filtrado (Local) ---
   useEffect(() => {
@@ -157,10 +168,10 @@ export default function App() {
 
   useEffect(() => {
     if (comunaInput.length < 2) { setComunaSuggestions([]); return; }
-    const allComunas = regionesYComunas.flatMap(r => r.comunas);
-    const filtered = allComunas.filter(c => c.toLowerCase().includes(comunaInput.toLowerCase()));
+    const comunasDeRegion = regionesYComunas.find(r => r.region === (isCreateMode ? newObraData['Región'] : obraDetails?.['Región']))?.comunas || [];
+    const filtered = comunasDeRegion.filter(c => c.toLowerCase().includes(comunaInput.toLowerCase()));
     setComunaSuggestions(filtered.slice(0, 10));
-  }, [comunaInput]);
+  }, [comunaInput, selectedRegion, isCreateMode, newObraData, obraDetails]);
 
   useEffect(() => {
     if (!selectedCompany) { setObras([]); setSelectedObraId(''); return; }
@@ -169,14 +180,20 @@ export default function App() {
   }, [selectedCompany, allData]);
 
   useEffect(() => {
-    if (!selectedObraId) { setObraDetails(null); setInitialObraDetails(null); return; }
+    if (!selectedObraId) {
+      if (!isCreateMode) {
+        setObraDetails(null);
+        setInitialObraDetails(null);
+      }
+      return;
+    }
     const details = allData.find(item => item.ID === selectedObraId);
     if (details) {
       setObraDetails(details);
       setInitialObraDetails(details);
       setComunaInput(details['Comuna'] || '');
     }
-  }, [selectedObraId, allData]);
+  }, [selectedObraId, allData, isCreateMode]);
 
   // --- Manejadores de Eventos ---
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -194,19 +211,15 @@ export default function App() {
     setLoading(true);
     setMessage('');
     try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'editObra', id: selectedObraId, updates }),
-      });
+      const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'editObra', id: selectedObraId, updates }) });
       const data = await response.json();
       if (data.status === 'success') {
         setMessage(Object.keys(updates).length > 0 ? '✅ Cambios guardados.' : '✅ Visita registrada.');
-        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getInitialData' }) });
+        // Recargar datos de la región actual
+        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getDataByRegion', region: selectedRegion }) });
         const newData = await res.json();
         if(newData.status === 'success') setAllData(newData.data);
-      } else {
-        throw new Error(data.message);
-      }
+      } else { throw new Error(data.message); }
     } catch (error) {
       setMessage(`❌ Error: ${error instanceof Error ? error.message : 'Desconocido'}`);
     }
@@ -217,9 +230,7 @@ export default function App() {
     if (!obraDetails || !initialObraDetails) return;
     const updates: ObraDetails = {};
     for (const key in obraDetails) {
-      if (obraDetails[key] !== initialObraDetails[key]) {
-        updates[key] = obraDetails[key];
-      }
+      if (obraDetails[key] !== initialObraDetails[key]) { updates[key] = obraDetails[key]; }
     }
     handleAction(updates);
   };
@@ -228,19 +239,19 @@ export default function App() {
     setLoading(true);
     setMessage('');
     try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'createNewObra', data: newObraData }),
-      });
+      const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'createNewObra', data: newObraData }) });
       const result = await response.json();
       if (result.status === 'success') {
         setMessage('✅ Nueva obra creada con éxito.');
         setAllData(prevData => [...prevData, result.data]);
         setIsCreateMode(false);
         setNewObraData(initialNewObraState);
-      } else {
-        throw new Error(result.message);
-      }
+        // Volver a seleccionar la región para refrescar la lista de obras si es necesario
+        const currentRegion = selectedRegion;
+        setSelectedRegion('');
+        setTimeout(() => setSelectedRegion(currentRegion), 100);
+
+      } else { throw new Error(result.message); }
     } catch (error) {
       setMessage(`❌ Error al crear la obra: ${error instanceof Error ? error.message : 'Desconocido'}`);
     }
@@ -252,6 +263,12 @@ export default function App() {
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString('es-CL');
   };
+  
+  const formatDateForInput = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? '' : date.toISOString().split('T')[0];
+  };
 
   return (
     <div className="container">
@@ -261,29 +278,47 @@ export default function App() {
         {!isCreateMode ? (
           <>
             <div className="form-grid">
-              <div className="form-field">
-                <label>Empresa</label>
-                <AutocompleteInput value={companyInput} onChange={(e) => { setCompanyInput(e.target.value); setSelectedCompany(''); }} onSuggestionClick={(company) => { setCompanyInput(company); setSelectedCompany(company); setCompanySuggestions([]); }} suggestions={companySuggestions} placeholder="Busque una empresa..." disabled={loading} />
-              </div>
-              <div className="form-field">
-                <label>Obra / PDV</label>
-                <select value={selectedObraId} onChange={(e) => setSelectedObraId(e.target.value)} disabled={loading || !selectedCompany}>
-                  <option value="">-- Seleccione un PdV --</option>
-                  {obras.map(obra => <option key={obra.ID} value={obra.ID}>{obra.ID} - {obra['Obra / PDV']}</option>)}
+              <div className="form-field" style={{ gridColumn: '1 / -1' }}>
+                <label>1. Seleccione Región</label>
+                <select value={selectedRegion} onChange={(e) => {
+                  setSelectedRegion(e.target.value);
+                  setCompanyInput('');
+                  setSelectedCompany('');
+                  setSelectedObraId('');
+                }}>
+                  <option value="">-- Elija una región para comenzar --</option>
+                  {regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}
                 </select>
               </div>
             </div>
-            {!selectedObraId && (
-              <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
-                <button onClick={() => { setIsCreateMode(true); setSelectedObraId(''); setComunaInput(''); }} className="secondary-button">Agregar Nuevo Punto de Venta</button>
-              </div>
+            {selectedRegion && (
+              <>
+                <div className="form-grid" style={{ marginTop: '1.5rem' }}>
+                  <div className="form-field">
+                    <label>2. Empresa</label>
+                    <AutocompleteInput value={companyInput} onChange={(e) => { setCompanyInput(e.target.value); setSelectedCompany(''); }} onSuggestionClick={(company) => { setCompanyInput(company); setSelectedCompany(company); setCompanySuggestions([]); }} suggestions={companySuggestions} placeholder="Busque una empresa..." disabled={loading || !selectedRegion} />
+                  </div>
+                  <div className="form-field">
+                    <label>3. Obra / PDV</label>
+                    <select value={selectedObraId} onChange={(e) => setSelectedObraId(e.target.value)} disabled={loading || !selectedCompany}>
+                      <option value="">-- Seleccione un PdV --</option>
+                      {obras.map(obra => <option key={obra.ID} value={obra.ID}>{obra.ID} - {obra['Obra / PDV']}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {!selectedObraId && (
+                  <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
+                    <button onClick={() => { setIsCreateMode(true); setComunaInput(''); setNewObraData({ ...initialNewObraState, 'Región': selectedRegion }); }} className="secondary-button">Agregar Nuevo Punto de Venta</button>
+                  </div>
+                )}
+              </>
             )}
           </>
         ) : (
           <div>
-            <h2>Agregar Nuevo PdV</h2>
+            <h2>Agregar Nuevo PdV en {selectedRegion}</h2>
             <div className="form-grid-details">
-              {/* Columna 1 */}
+               {/* Columna 1 */}
               <div className="form-column">
                 <div className="form-field"><label>Empresa</label><input type="text" name="Empresa" value={newObraData['Empresa']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
@@ -293,14 +328,14 @@ export default function App() {
               </div>
               {/* Columna 2 */}
               <div className="form-column">
-                <div className="form-field"><label>Región</label><select name="Región" value={newObraData['Región']} onChange={handleNewObraInputChange}><option value="">-- Elija una región --</option>{regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}</select></div>
+                <div className="form-field"><label>Región</label><input type="text" value={newObraData['Región']} disabled /></div>
                 <div className="form-field">
                   <label>Comuna</label>
                   <AutocompleteInput value={comunaInput} onChange={(e) => { setComunaInput(e.target.value); setNewObraData(prev => ({...prev, 'Comuna': e.target.value})); }} onSuggestionClick={(comuna) => { setComunaInput(comuna); setNewObraData(prev => ({...prev, 'Comuna': comuna})); setComunaSuggestions([]); }} suggestions={comunaSuggestions} placeholder="Busque una comuna..." disabled={false} />
                 </div>
                 <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Monto Presupuesto</label><input type="text" name="Monto Presupuesto" value={newObraData['Monto Presupuesto']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field"><label>Fecha Fin Obra</label><input type="text" name="Fecha Fin Obra" value={newObraData['Fecha Fin Obra']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={newObraData['Fecha Fin Obra']} onChange={handleNewObraInputChange} /></div>
               </div>
               {/* Columna 3 */}
               <div className="form-column">
@@ -321,7 +356,8 @@ export default function App() {
         )}
       </div>
 
-      {loading && !isCreateMode && <div className="loader">Cargando...</div>}
+      {loading && !selectedRegion && !isCreateMode && <div className="loader">Seleccione una región para cargar los datos...</div>}
+      {loading && selectedRegion && !isCreateMode && <div className="loader">Cargando datos de la región...</div>}
 
       {obraDetails && !loading && !isCreateMode && (
         <div className="card details">
@@ -344,7 +380,7 @@ export default function App() {
               <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?']} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
               <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={obraDetails['Observaciones de Compra'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
               <div className="form-field"><label>Monto Presupuesto</label><input type="text" name="Monto Presupuesto" value={obraDetails['Monto Presupuesto'] || ''} onChange={handleInputChange} /></div>
-              <div className="form-field"><label>Fecha Fin Obra</label><input type="text" name="Fecha Fin Obra" value={obraDetails['Fecha Fin Obra'] || ''} onChange={handleInputChange} /></div>
+              <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={formatDateForInput(obraDetails['Fecha Fin Obra'])} onChange={handleInputChange} /></div>
             </div>
             {/* Columna 3 */}
             <div className="form-column">
@@ -375,4 +411,3 @@ export default function App() {
     </div>
   );
 }
-
