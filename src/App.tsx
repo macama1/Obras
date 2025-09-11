@@ -31,7 +31,7 @@ export const regionesYComunas = [
     { region: 'La Araucanía', comunas: ['Temuco', 'Carahue', 'Cunco', 'Curarrehue', 'Freire', 'Galvarino', 'Gorbea', 'Loncoche', 'Melipeuco', 'Nueva Imperial', 'Padre las Casas', 'Perquenco', 'Pitrufquén', 'Pucón', 'Saavedra', 'Teodoro Schmidt', 'Toltén', 'Vilcún', 'Villarrica', 'Cholchol', 'Angol', 'Collipulli', 'Curacautín', 'Ercilla', 'Lonquimay', 'Los Sauces', 'Lumaco', 'Purén', 'Renaico', 'Traiguén', 'Victoria']},
     { region: 'Los Ríos', comunas: ['Valdivia', 'Corral', 'Lanco', 'Los Lagos', 'Máfil', 'Mariquina', 'Paillaco', 'Panguipulli', 'La Unión', 'Futrono', 'Lago Ranco', 'Río Bueno']},
     { region: 'Los Lagos', comunas: ['Puerto Montt', 'Calbuco', 'Cochamó', 'Fresia', 'Frutillar', 'Los Muermos', 'Llanquihue', 'Maullín', 'Puerto Varas', 'Castro', 'Ancud', 'Chonchi', 'Curaco de Vélez', 'Dalcahue', 'Puqueldón', 'Queilén', 'Quellón', 'Quemchi', 'Quinchao', 'Osorno', 'Puerto Octay', 'Purranque', 'Puyehue', 'Río Negro', 'San Juan de la Costa', 'San Pablo', 'Chaitén', 'Futaleufú', 'Hualaihué', 'Palena']},
-    { region: 'Aysén', comunas: ['Coyhaique', 'Lago Verde', 'Aysén', 'Cisnes', 'Guaitecas', 'Cochrane', "O'Higgins", 'Tortel', 'Chile Chico', 'Río Ibáñez']},
+    { region: 'Aysén del General Carlos Ibáñez del Campo', comunas: ['Coyhaique', 'Lago Verde', 'Aysén', 'Cisnes', 'Guaitecas', 'Cochrane', "O'Higgins", 'Tortel', 'Chile Chico', 'Río Ibáñez']},
     { region: 'Magallanes y de la Antártica Chilena', comunas: ['Punta Arenas', 'Laguna Blanca', 'Río Verde', 'San Gregorio', 'Cabo de Hornos (Ex Navarino)', 'Antártica', 'Porvenir', 'Primavera', 'Timaukel', 'Natales', 'Torres del Paine']},
 ];
 
@@ -118,6 +118,7 @@ export default function App() {
   // --- Estados ---
   const [selectedRegion, setSelectedRegion] = useState('');
   const [allData, setAllData] = useState<ObraDetails[]>([]);
+  const [clientList, setClientList] = useState<string[]>([]); // <-- NUEVO ESTADO
   const [companyInput, setCompanyInput] = useState('');
   const [companySuggestions, setCompanySuggestions] = useState<string[]>([]);
   const [selectedCompany, setSelectedCompany] = useState('');
@@ -131,6 +132,26 @@ export default function App() {
   const [message, setMessage] = useState('');
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [newObraData, setNewObraData] = useState<ObraDetails>(initialNewObraState);
+  const [newCompanyInput, setNewCompanyInput] = useState(''); // <-- NUEVO ESTADO para el input de creación
+  const [newCompanySuggestions, setNewCompanySuggestions] = useState<string[]>([]); // <-- NUEVO ESTADO para sugerencias de creación
+
+  // --- Carga Inicial de Datos (ahora también carga clientes) ---
+  useEffect(() => {
+    const fetchClients = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getClientList' }) });
+        const data = await response.json();
+        if (data.status === 'success') {
+          setClientList(data.data);
+        }
+      } catch (error) {
+        setMessage('❌ No se pudo cargar la lista de clientes.');
+      }
+      setLoading(false);
+    };
+    fetchClients();
+  }, []);
 
   // --- Carga de Datos por Región ---
   useEffect(() => {
@@ -146,9 +167,7 @@ export default function App() {
         const data = await response.json();
         if (data.status === 'success') {
           setAllData(data.data);
-        } else {
-          throw new Error(data.message || 'Error del servidor');
-        }
+        } else { throw new Error(data.message || 'Error del servidor'); }
       } catch (error) {
         setMessage('❌ No se pudieron cargar los datos para la región seleccionada.');
         setAllData([]);
@@ -160,11 +179,20 @@ export default function App() {
 
   // --- Búsqueda y Filtrado (Local) ---
   useEffect(() => {
+    // Para búsqueda en obras existentes
     if (companyInput.length < 2) { setCompanySuggestions([]); return; }
     const uniqueCompanies = [...new Set(allData.map(item => item.Empresa))];
     const filtered = uniqueCompanies.filter(c => c && c.toLowerCase().includes(companyInput.toLowerCase()));
     setCompanySuggestions(filtered.slice(0, 10));
   }, [companyInput, allData]);
+  
+  // --- NUEVO EFECTO: Para autocompletado en CREACIÓN ---
+  useEffect(() => {
+    if (newCompanyInput.length < 2) { setNewCompanySuggestions([]); return; }
+    const filtered = clientList.filter(c => c && c.toLowerCase().includes(newCompanyInput.toLowerCase()));
+    setNewCompanySuggestions(filtered.slice(0, 10));
+  }, [newCompanyInput, clientList]);
+
 
   useEffect(() => {
     if (comunaInput.length < 2) { setComunaSuggestions([]); return; }
@@ -181,10 +209,7 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedObraId) {
-      if (!isCreateMode) {
-        setObraDetails(null);
-        setInitialObraDetails(null);
-      }
+      if (!isCreateMode) { setObraDetails(null); setInitialObraDetails(null); }
       return;
     }
     const details = allData.find(item => item.ID === selectedObraId);
@@ -215,7 +240,6 @@ export default function App() {
       const data = await response.json();
       if (data.status === 'success') {
         setMessage(Object.keys(updates).length > 0 ? '✅ Cambios guardados.' : '✅ Visita registrada.');
-        // Recargar datos de la región actual
         const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getDataByRegion', region: selectedRegion }) });
         const newData = await res.json();
         if(newData.status === 'success') setAllData(newData.data);
@@ -246,11 +270,9 @@ export default function App() {
         setAllData(prevData => [...prevData, result.data]);
         setIsCreateMode(false);
         setNewObraData(initialNewObraState);
-        // Volver a seleccionar la región para refrescar la lista de obras si es necesario
         const currentRegion = selectedRegion;
         setSelectedRegion('');
         setTimeout(() => setSelectedRegion(currentRegion), 100);
-
       } else { throw new Error(result.message); }
     } catch (error) {
       setMessage(`❌ Error al crear la obra: ${error instanceof Error ? error.message : 'Desconocido'}`);
@@ -264,12 +286,6 @@ export default function App() {
     return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString('es-CL');
   };
   
-  const formatDateForInput = (dateString: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? '' : date.toISOString().split('T')[0];
-  };
-
   return (
     <div className="container">
       <GlobalStyles />
@@ -308,7 +324,7 @@ export default function App() {
                 </div>
                 {!selectedObraId && (
                   <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
-                    <button onClick={() => { setIsCreateMode(true); setComunaInput(''); setNewObraData({ ...initialNewObraState, 'Región': selectedRegion }); }} className="secondary-button">Agregar Nuevo Punto de Venta</button>
+                    <button onClick={() => { setIsCreateMode(true); setComunaInput(''); setNewCompanyInput(''); setNewObraData({ ...initialNewObraState, 'Región': selectedRegion }); }} className="secondary-button">Agregar Nuevo Punto de Venta</button>
                   </div>
                 )}
               </>
@@ -318,15 +334,31 @@ export default function App() {
           <div>
             <h2>Agregar Nuevo PdV en {selectedRegion}</h2>
             <div className="form-grid-details">
-               {/* Columna 1 */}
               <div className="form-column">
-                <div className="form-field"><label>Empresa</label><input type="text" name="Empresa" value={newObraData['Empresa']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field">
+                  <label>Empresa</label>
+                  {/* --- CAMBIO AQUÍ: Autocomplete para nueva empresa --- */}
+                  <AutocompleteInput 
+                    value={newCompanyInput}
+                    onChange={(e) => {
+                      setNewCompanyInput(e.target.value);
+                      setNewObraData(prev => ({...prev, 'Empresa': e.target.value}));
+                    }}
+                    onSuggestionClick={(suggestion) => {
+                      setNewCompanyInput(suggestion);
+                      setNewObraData(prev => ({...prev, 'Empresa': suggestion}));
+                      setNewCompanySuggestions([]);
+                    }}
+                    suggestions={newCompanySuggestions}
+                    placeholder="Busque o ingrese empresa..."
+                    disabled={loading}
+                  />
+                </div>
                 <div className="form-field"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Vendedor</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
                 <div className="form-field"><label>Canal</label><select name="Canal" value={newObraData['Canal']} onChange={handleNewObraInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                 <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={newObraData['Tipo Construcción']} onChange={handleNewObraInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
               </div>
-              {/* Columna 2 */}
               <div className="form-column">
                 <div className="form-field"><label>Región</label><input type="text" value={newObraData['Región']} disabled /></div>
                 <div className="form-field">
@@ -335,9 +367,8 @@ export default function App() {
                 </div>
                 <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Monto Presupuesto</label><input type="text" name="Monto Presupuesto" value={newObraData['Monto Presupuesto']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={newObraData['Fecha Fin Obra']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Fecha Fin Obra</label><input type="text" name="Fecha Fin Obra" value={newObraData['Fecha Fin Obra']} onChange={handleNewObraInputChange} /></div>
               </div>
-              {/* Columna 3 */}
               <div className="form-column">
                 <div className="form-field"><label>Estado de Obra</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={newObraData['Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
@@ -363,7 +394,6 @@ export default function App() {
         <div className="card details">
           <h2>Detalles de la Obra</h2>
           <div className="form-grid-details">
-            {/* Columna 1 */}
             <div className="form-column">
               <div className="form-field"><label>Empresa</label><input type="text" value={obraDetails['Empresa'] || ''} disabled /></div>
               <div className="form-field"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={obraDetails['Obra / PDV'] || ''} onChange={handleInputChange} /></div>
@@ -373,16 +403,14 @@ export default function App() {
               <div className="form-field"><label>Comuna</label><input type="text" value={obraDetails['Comuna'] || ''} disabled /></div>
               <div className="form-field"><label>Dirección</label><input type="text" value={obraDetails['Dirección'] || ''} disabled /></div>
             </div>
-            {/* Columna 2 */}
             <div className="form-column">
               <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
               <div className="form-field"><label>Estado de Obra</label><select name="Estado de Obra" value={obraDetails['Estado de Obra'] || ''} onChange={handleInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
               <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?']} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
               <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={obraDetails['Observaciones de Compra'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
               <div className="form-field"><label>Monto Presupuesto</label><input type="text" name="Monto Presupuesto" value={obraDetails['Monto Presupuesto'] || ''} onChange={handleInputChange} /></div>
-              <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={formatDateForInput(obraDetails['Fecha Fin Obra'])} onChange={handleInputChange} /></div>
+              <div className="form-field"><label>Fecha Fin Obra</label><input type="text" name="Fecha Fin Obra" value={obraDetails['Fecha Fin Obra'] || ''} onChange={handleInputChange} /></div>
             </div>
-            {/* Columna 3 */}
             <div className="form-column">
               <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={obraDetails['Descripción de la obra o PDV'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
               <div className="form-field"><label>M²</label><input type="text" name="M²" value={obraDetails['M²'] || ''} onChange={handleInputChange} /></div>
@@ -391,7 +419,6 @@ export default function App() {
               <div className="form-field"><label>Email Contacto</label><input type="email" name="Email Contacto" value={obraDetails['Email Contacto'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Teléfono Contacto</label><input type="tel" name="Teléfono Contacto" value={obraDetails['Teléfono Contacto'] || ''} onChange={handleInputChange} /></div>
             </div>
-            {/* Fila Inferior */}
             <div className="form-column" style={{gridColumn: '1 / -1'}}>
               <div className="form-field"><label>Acciones Última Reunion</label><textarea value={obraDetails['Acciones Última Reunion'] || ''} rows={2} disabled></textarea></div>
               <div className="form-field"><label>Comentarios Última Visita</label><textarea name="Comentarios Última Visita" value={obraDetails['Comentarios Última Visita'] || ''} onChange={handleInputChange} rows={4}></textarea></div>
@@ -401,7 +428,7 @@ export default function App() {
           </div>
           <div className="actions">
             <button onClick={handleSaveChanges} disabled={loading}>
-              {loading ? 'Guardando...' : 'Registrar Actualización'}
+              {loading ? 'Guardando...' : 'Guardar Cambios y Registrar Visita'}
             </button>
           </div>
         </div>
@@ -411,3 +438,4 @@ export default function App() {
     </div>
   );
 }
+
