@@ -10,7 +10,7 @@ export const vendedorOptions = [
   "Andrés Pacheco", "Eduardo Arias", "David Fuentealba", "Diego Montenegro", "Jorge Nario", "Leonel Angulo", "Loreto Medina", "Mónica Valencia"
 ];
 export const estadoObraOptions = [
-  'Cierre Perimetral', 'Limpieza y Demolición', 'Instalación de Faena', 'Obras Preliminares', 'Movimiento de Tierra', 'Excavaciones', 'Fundaciones', 'Obra Gruesa -20%', 'Obra Gruesa 20% ~ 50%', 'Obra Gruesa +50%', 'Terminaciones -20%', 'Terminaciones 20% ~ 50%', 'Terminaciones +50%', 'Terminada', 'Detenida', 'No Aplica',
+  'Cierre Perimetral', 'Limpieza y Demolición', 'Instalación de Faena', 'Obras Preliminares', 'Movimiento de Tierra', 'Excavaciones', 'Fundaciones', 'Obra Gruesa -20%', 'Obra Gruesa 20% ~ 50%', 'Obra Gruesa +50%', 'Terminaciones -20%', 'Terminaciones 20% ~ 50%', 'Terminaciones +50%', 'Terminada' 'Post Venta', 'Detenida',
 ];
 export const tipoConstruccionOptions = [
   "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas", "Salud", "Culto", "Deportivo", 'No Aplica'
@@ -93,20 +93,43 @@ const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLd
 interface ObraDetails { [key: string]: any; }
 
 // --- Componente de Autocompletado ---
-const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, placeholder, disabled }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onSuggestionClick: (suggestion: string) => void; suggestions: string[]; placeholder: string; disabled: boolean; }) => (
-  <div className="autocomplete-container">
-    <input type="text" value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} autoComplete="off" />
-    {suggestions.length > 0 && (
-      <ul className="suggestions-list">
-        {suggestions.map((suggestion, index) => (
-          <li key={index} onClick={() => onSuggestionClick(suggestion)}>
-            {suggestion}
-          </li>
-        ))}
-      </ul>
-    )}
-  </div>
-);
+const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, placeholder, disabled }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onSuggestionClick: (suggestion: string) => void; suggestions: string[]; placeholder: string; disabled: boolean; }) => {
+  const [showSuggestions, setShowSuggestions] = useState(true);
+
+  useEffect(() => {
+    setShowSuggestions(true);
+  }, [value]);
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setShowSuggestions(false);
+    onSuggestionClick(suggestion);
+  };
+  
+  return (
+    <div className="autocomplete-container">
+      <input 
+        type="text" 
+        value={value} 
+        onChange={onChange} 
+        placeholder={placeholder} 
+        disabled={disabled} 
+        autoComplete="off" 
+        onFocus={() => setShowSuggestions(true)}
+        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
+      />
+      {showSuggestions && suggestions.length > 0 && (
+        <ul className="suggestions-list">
+          {suggestions.map((suggestion, index) => (
+            <li key={index} onClick={() => handleSuggestionClick(suggestion)}>
+              {suggestion}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 
 // --- Estado Inicial para una Nueva Obra ---
 const initialNewObraState = {
@@ -118,7 +141,7 @@ export default function App() {
   // --- Estados ---
   const [selectedRegion, setSelectedRegion] = useState('');
   const [allData, setAllData] = useState<ObraDetails[]>([]);
-  const [clientList, setClientList] = useState<string[]>([]); // <-- NUEVO ESTADO
+  const [clientList, setClientList] = useState<string[]>([]);
   const [companyInput, setCompanyInput] = useState('');
   const [companySuggestions, setCompanySuggestions] = useState<string[]>([]);
   const [selectedCompany, setSelectedCompany] = useState('');
@@ -132,13 +155,12 @@ export default function App() {
   const [message, setMessage] = useState('');
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [newObraData, setNewObraData] = useState<ObraDetails>(initialNewObraState);
-  const [newCompanyInput, setNewCompanyInput] = useState(''); // <-- NUEVO ESTADO para el input de creación
-  const [newCompanySuggestions, setNewCompanySuggestions] = useState<string[]>([]); // <-- NUEVO ESTADO para sugerencias de creación
+  const [newCompanyInput, setNewCompanyInput] = useState('');
+  const [newCompanySuggestions, setNewCompanySuggestions] = useState<string[]>([]);
 
-  // --- Carga Inicial de Datos (ahora también carga clientes) ---
+  // --- Carga Inicial de Clientes ---
   useEffect(() => {
     const fetchClients = async () => {
-      setLoading(true);
       try {
         const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getClientList' }) });
         const data = await response.json();
@@ -146,9 +168,8 @@ export default function App() {
           setClientList(data.data);
         }
       } catch (error) {
-        setMessage('❌ No se pudo cargar la lista de clientes.');
+        console.error('No se pudo cargar la lista de clientes.');
       }
-      setLoading(false);
     };
     fetchClients();
   }, []);
@@ -179,14 +200,12 @@ export default function App() {
 
   // --- Búsqueda y Filtrado (Local) ---
   useEffect(() => {
-    // Para búsqueda en obras existentes
     if (companyInput.length < 2) { setCompanySuggestions([]); return; }
     const uniqueCompanies = [...new Set(allData.map(item => item.Empresa))];
     const filtered = uniqueCompanies.filter(c => c && c.toLowerCase().includes(companyInput.toLowerCase()));
     setCompanySuggestions(filtered.slice(0, 10));
   }, [companyInput, allData]);
   
-  // --- NUEVO EFECTO: Para autocompletado en CREACIÓN ---
   useEffect(() => {
     if (newCompanyInput.length < 2) { setNewCompanySuggestions([]); return; }
     const filtered = clientList.filter(c => c && c.toLowerCase().includes(newCompanyInput.toLowerCase()));
@@ -242,7 +261,9 @@ export default function App() {
         setMessage(Object.keys(updates).length > 0 ? '✅ Cambios guardados.' : '✅ Visita registrada.');
         const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getDataByRegion', region: selectedRegion }) });
         const newData = await res.json();
-        if(newData.status === 'success') setAllData(newData.data);
+        if(newData.status === 'success') {
+          setAllData(newData.data);
+        }
       } else { throw new Error(data.message); }
     } catch (error) {
       setMessage(`❌ Error: ${error instanceof Error ? error.message : 'Desconocido'}`);
@@ -289,7 +310,7 @@ export default function App() {
   return (
     <div className="container">
       <GlobalStyles />
-      <h1>Radar Comercial</h1>
+      <h1>Cartera Activa</h1>
       <div className="card">
         {!isCreateMode ? (
           <>
@@ -337,7 +358,6 @@ export default function App() {
               <div className="form-column">
                 <div className="form-field">
                   <label>Empresa</label>
-                  {/* --- CAMBIO AQUÍ: Autocomplete para nueva empresa --- */}
                   <AutocompleteInput 
                     value={newCompanyInput}
                     onChange={(e) => {
@@ -387,7 +407,7 @@ export default function App() {
         )}
       </div>
 
-      {loading && !selectedRegion && !isCreateMode && <div className="loader">Seleccione una región para cargar los datos...</div>}
+      {loading && !selectedRegion && !isCreateMode && <div className="loader"></div>}
       {loading && selectedRegion && !isCreateMode && <div className="loader">Cargando datos de la región...</div>}
 
       {obraDetails && !loading && !isCreateMode && (
@@ -401,7 +421,7 @@ export default function App() {
               <div className="form-field"><label>Canal</label><input type="text" value={obraDetails['Canal'] || ''} disabled /></div>
               <div className="form-field"><label>Región</label><input type="text" value={obraDetails['Región'] || ''} disabled /></div>
               <div className="form-field"><label>Comuna</label><input type="text" value={obraDetails['Comuna'] || ''} disabled /></div>
-              <div className="form-field"><label>Dirección</label><input type="text" value={obraDetails['Dirección'] || ''} disabled /></div>
+              <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={obraDetails['Dirección'] || ''} onChange={handleInputChange} /></div>
             </div>
             <div className="form-column">
               <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
@@ -428,7 +448,7 @@ export default function App() {
           </div>
           <div className="actions">
             <button onClick={handleSaveChanges} disabled={loading}>
-              {loading ? 'Guardando...' : 'Guardar Cambios'}
+              {loading ? 'Guardando...' : 'Guardar Cambios y Registrar Visita'}
             </button>
           </div>
         </div>
