@@ -133,7 +133,7 @@ const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, pl
 
 // --- Estado Inicial para una Nueva Obra ---
 const initialNewObraState = {
-  'Empresa': '', 'Obra / PDV': '', 'Vendedor': '', 'Canal': '', 'Tipo Construcción': '', 'Región': '', 'Comuna': '', 'Dirección': '', 'Estado de Obra': '', 'Les Vendemos?': '', 'Observaciones de Compra': '', 'Descripción de la obra o PDV': '', 'M²': '', 'Nombre Contacto': '', 'Cargo Contacto': '', 'Email Contacto': '', 'Teléfono Contacto (sin el +)': '', 'Contacto Administrador': '', 'Comentarios Última Visita': '', 'Rut Empresa': '', 'Monto Presupuesto': '', 'Fecha Fin Obra': ''
+  'Empresa': '', 'Obra / PDV': '', 'Vendedor': '', 'Canal': '', 'Tipo Construcción': '', 'Región': '', 'Comuna': '', 'Dirección': '', 'Estado de Obra': '', 'Les Vendemos?': '', 'Observaciones de Compra': '', 'Descripción de la obra o PDV': '', 'M²': '', 'Nombre Contacto': '', 'Cargo Contacto': '', 'Email Contacto': '', 'Teléfono Contacto': '', 'Contacto Administrador': '', 'Comentarios Última Visita': '', 'Rut Empresa': '', 'Monto Presupuesto': '', 'Fecha Fin Obra': ''
 };
 
 
@@ -396,7 +396,7 @@ export default function App() {
                 <div className="form-field"><label>Nombre Contacto</label><input type="text" name="Nombre Contacto" value={newObraData['Nombre Contacto']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Cargo Contacto</label><input type="text" name="Cargo Contacto" value={newObraData['Cargo Contacto']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Email Contacto</label><input type="email" name="Email Contacto" value={newObraData['Email Contacto']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field"><label>Teléfono Contacto</label><input type="tel" name="Teléfono Contacto" value={newObraData['Teléfono Contacto (sin el +)']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Teléfono Contacto (sin el +)</label><input type="tel" name="Teléfono Contacto" value={newObraData['Teléfono Contacto']} onChange={handleNewObraInputChange} /></div>
               </div>
             </div>
             <div className="actions">
@@ -437,7 +437,7 @@ export default function App() {
               <div className="form-field"><label>Nombre Contacto</label><input type="text" name="Nombre Contacto" value={obraDetails['Nombre Contacto'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Cargo Contacto</label><input type="text" name="Cargo Contacto" value={obraDetails['Cargo Contacto'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Email Contacto</label><input type="email" name="Email Contacto" value={obraDetails['Email Contacto'] || ''} onChange={handleInputChange} /></div>
-              <div className="form-field"><label>Teléfono Contacto</label><input type="tel" name="Teléfono Contacto" value={obraDetails['Teléfono Contacto'] || ''} onChange={handleInputChange} /></div>
+              <div className="form-field"><label>Teléfono Contacto (sin el +)</label><input type="tel" name="Teléfono Contacto" value={obraDetails['Teléfono Contacto'] || ''} onChange={handleInputChange} /></div>
             </div>
             <div className="form-column" style={{gridColumn: '1 / -1'}}>
               <div className="form-field"><label>Acciones Última Reunion</label><textarea value={obraDetails['Acciones Última Reunion'] || ''} rows={2} disabled></textarea></div>
