@@ -46,6 +46,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLd
 interface ObraDetails { [key: string]: any; }
 
 // --- Componente de Autocompletado ---
+// --- Componente de Autocompletado (Corregido) ---
 const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, placeholder, disabled }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onSuggestionClick: (suggestion: string) => void; suggestions: string[]; placeholder: string; disabled: boolean; }) => {
   const [showSuggestions, setShowSuggestions] = useState(true);
 
@@ -73,7 +74,11 @@ const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, pl
       {showSuggestions && suggestions.length > 0 && (
         <ul className="suggestions-list">
           {suggestions.map((suggestion, index) => (
-            <li key={index} onClick={() => handleSuggestionClick(suggestion)}>
+            
+            // --- AQUÍ ESTÁ EL CAMBIO ---
+            <li key={index} onMouseDown={() => handleSuggestionClick(suggestion)}>
+            {/* ------------------------- */}
+
               {suggestion}
             </li>
           ))}
