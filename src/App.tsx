@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './App.css'; // <--- IMPORTACIÓN DE ESTILOS AÑADIDA
 
 // --- Contenido de database.ts y App.css movido aquí para resolver el error de compilación ---
 
@@ -36,55 +37,7 @@ export const regionesYComunas = [
 ];
 
 
-// --- Componente de Estilos (reemplaza App.css) ---
-const GlobalStyles = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
-    :root {
-      --font-family: 'Inter', sans-serif;
-      --primary-color: #f97316; /* Naranjo Natstone */
-      --primary-hover-color: #ea580c;
-      --secondary-color: #4b5563; /* Gris oscuro */
-      --secondary-hover-color: #374151;
-      --background-color: #f3f4f6;
-      --card-background: #ffffff;
-      --text-color: #1f2937;
-      --text-light-color: #6b7280;
-      --border-color: #d1d5db;
-      --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-      --border-radius: 8px;
-    }
-    body { margin: 0; font-family: var(--font-family); background-color: var(--background-color); color: var(--text-color); }
-    .container { max-width: 1200px; margin: 2rem auto; padding: 1rem; }
-    h1, h2 { font-weight: 700; color: var(--text-color); }
-    h1 { text-align: center; margin-bottom: 2rem; font-size: 2.25rem; }
-    h2 { margin: 0; font-size: 1.5rem; }
-    .card { background-color: var(--card-background); border-radius: var(--border-radius); box-shadow: var(--shadow); padding: 2rem; margin-bottom: 2rem; border: 1px solid var(--border-color); }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; align-items: end; }
-    .form-grid-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-    .form-column { display: flex; flex-direction: column; gap: 1.25rem; }
-    .form-field { display: flex; flex-direction: column; gap: 0.5rem; }
-    .form-field.full-width { grid-column: 1 / -1; }
-    label { font-weight: 500; font-size: 0.9rem; color: var(--text-light-color); }
-    input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="number"], select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); font-size: 1rem; transition: all 0.2s; background-color: #fff; color: var(--text-color); box-sizing: border-box; font-family: inherit; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2); }
-    input:disabled, textarea:disabled { background-color: #f3f4f6; cursor: not-allowed; color: #9ca3af; }
-    .actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; padding-top: 1.5rem; }
-    button { padding: 0.75rem 1.5rem; border: none; border-radius: var(--border-radius); font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; background-color: var(--primary-color); color: white; }
-    button:hover:not(:disabled) { background-color: var(--primary-hover-color); }
-    .secondary-button { background-color: var(--secondary-color); }
-    .secondary-button:hover:not(:disabled) { background-color: var(--secondary-hover-color); }
-    .autocomplete-container { position: relative; }
-    .suggestions-list { position: absolute; background-color: white; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 var(--border-radius) var(--border-radius); width: 100%; max-height: 200px; overflow-y: auto; z-index: 1000; list-style: none; padding: 0; margin-top: -1px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
-    .suggestions-list li { padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color); }
-    .suggestions-list li:last-child { border-bottom: none; }
-    .suggestions-list li:hover { background-color: #f9fafb; }
-    .loader { text-align: center; padding: 2rem; font-size: 1.2rem; color: var(--text-light-color); }
-    .message { text-align: center; padding: 1rem; margin: 1rem 0; border-radius: var(--border-radius); font-weight: 500; }
-    @media (max-width: 992px) { .form-grid-details { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 768px) { h1 { font-size: 1.8rem; } .card { padding: 1.5rem; } .form-grid-details { grid-template-columns: 1fr; } .actions { flex-direction: column; } button { width: 100%; } }
-  `}</style>
-);
+// --- COMPONENTE GlobalStyles ELIMINADO ---
 
 
 const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLdKl0sfkjUbVJWPM6HLG98Cu3G4wfYhgSmEk_pUTPWHhMXgw/exec";
@@ -280,7 +233,6 @@ export default function App() {
     handleAction(updates);
   };
   
-  {/* --- MODIFICADO: Se eliminó la recarga de región --- */}
   const handleCreateObra = async () => {
     setLoading(true);
     setMessage('');
@@ -289,11 +241,9 @@ export default function App() {
       const result = await response.json();
       if (result.status === 'success') {
         setMessage('✅ Nueva obra creada con éxito.');
-        // Actualización optimista: se agrega la nueva obra al estado local
         setAllData(prevData => [...prevData, result.data]);
         setIsCreateMode(false);
         setNewObraData(initialNewObraState);
-        // Ya no es necesario forzar la recarga
       } else { throw new Error(result.message); }
     } catch (error) {
       setMessage(`❌ Error al crear la obra: ${error instanceof Error ? error.message : 'Desconocido'}`);
@@ -303,20 +253,32 @@ export default function App() {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
+    // Maneja formato AAAA-MM-DD del input date
+    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const parts = dateString.split('-');
+      // new Date(year, monthIndex, day)
+      const utcDate = new Date(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
+      return utcDate.toLocaleDateString('es-CL', { timeZone: 'UTC' });
+    }
     const date = new Date(dateString);
-    // Corrección para manejar formatos de fecha de input type="date" (AAAA-MM-DD)
-    if (typeof dateString === 'string' && dateString.includes('-') && dateString.length === 10) {
-      const parts = dateString.split('-');
-      // new Date(year, monthIndex, day)
-      const utcDate = new Date(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
-      return utcDate.toLocaleDateString('es-CL', { timeZone: 'UTC' });
-    }
     return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString('es-CL');
   };
   
+  // Función para formatear la fecha para el input type="date"
+  const formatDateForInput = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toISOString().split('T')[0];
+    } catch (e) {
+      return '';
+    }
+  };
+
   return (
     <div className="container">
-      <GlobalStyles />
+      {/* --- <GlobalStyles /> ELIMINADO --- */}
       <h1>RADAR COMERCIAL</h1>
       <div className="card">
         {!isCreateMode ? (
@@ -343,7 +305,7 @@ export default function App() {
                     <AutocompleteInput value={companyInput} onChange={(e) => { setCompanyInput(e.target.value); setSelectedCompany(''); }} onSuggestionClick={(company) => { setCompanyInput(company); setSelectedCompany(company); setCompanySuggestions([]); }} suggestions={companySuggestions} placeholder="Busque una empresa..." disabled={loading || !selectedRegion} />
                   </div>
                   <div className="form-field">
-              _ <label>3. Obra / PDV</label>
+                    <label>3. Obra / PDV</label>
                     <select value={selectedObraId} onChange={(e) => setSelectedObraId(e.target.value)} disabled={loading || !selectedCompany}>
                       <option value="">-- Seleccione un PdV --</option>
                       {obras.map(obra => <option key={obra.ID} value={obra.ID}>{obra.ID} - {obra['Obra / PDV']}</option>)}
@@ -359,7 +321,6 @@ export default function App() {
             )}
           </>
         ) : (
-        // --- MODIFICADO: Formulario de Creación con campos añadidos y tipos corregidos ---
           <div>
             <h2>Agregar Nuevo PdV en {selectedRegion}</h2>
             <div className="form-grid-details">
@@ -382,7 +343,6 @@ export default function App() {
                     disabled={loading}
                   />
                 </div>
-                {/* --- CAMPO AÑADIDO --- */}
                 <div className="form-field"><label>Rut Empresa</label><input type="text" name="Rut Empresa" value={newObraData['Rut Empresa']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Vendedor</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
@@ -395,28 +355,22 @@ export default function App() {
                   <AutocompleteInput value={comunaInput} onChange={(e) => { setComunaInput(e.target.value); setNewObraData(prev => ({...prev, 'Comuna': e.target.value})); }} onSuggestionClick={(comuna) => { setComunaInput(comuna); setNewObraData(prev => ({...prev, 'Comuna': comuna})); setComunaSuggestions([]); }} suggestions={comunaSuggestions} placeholder="Busque una comuna..." disabled={false} />
                 </div>
                 <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
-                {/* --- TIPO MODIFICADO --- */}
                 <div className="form-field"><label>Monto Presupuesto</label><input type="number" name="Monto Presupuesto" value={newObraData['Monto Presupuesto']} onChange={handleNewObraInputChange} /></div>
-                {/* --- TIPO MODIFICADO --- */}
                 <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={newObraData['Fecha Fin Obra']} onChange={handleNewObraInputChange} /></div>
-                {/* --- CAMPO AÑADIDO --- */}
                 <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={newObraData['Observaciones de Compra']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
               </div>
               <div className="form-column">
                 <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={newObraData['Tipo Construcción']} onChange={handleNewObraInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
                 <div className="form-field"><label>*ESTADO DE LA OBRA*</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={newObraData['Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
-                {/* --- TIPO MODIFICADO --- */}
                 <div className="form-field"><label>M²</label><input type="number" name="M²" value={newObraData['M²']} onChange={handleNewObraInputChange} /></div>
-                {/* --- CAMPO AÑADIDO --- */}
                 <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={newObraData['Descripción de la obra o PDV']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
                 <div className="form-field"><label>Nombre Contacto</label><input type="text" name="Nombre Contacto" value={newObraData['Nombre Contacto']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Cargo Contacto</label><input type="text" name="Cargo Contacto" value={newObraData['Cargo Contacto']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Email Contacto</label><input type="email" name="Email Contacto" value={newObraData['Email Contacto']} onChange={handleNewObraInputChange} /></div>
-      _           <div className="form-field"><label>Teléfono Contacto (sin el +)</label><input type="tel" name="Teléfono Contacto" value={newObraData['Teléfono Contacto']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Teléfono Contacto (sin el +)</label><input type="tel" name="Teléfono Contacto" value={newObraData['Teléfono Contacto']} onChange={handleNewObraInputChange} /></div>
               </div>
             </div>
-            {/* --- CAMPO AÑADIDO (Full Width) --- */}
             <div className="form-field full-width" style={{ marginTop: '1.5rem' }}>
               <label>Comentarios Iniciales (Opcional)</label>
               <textarea name="Comentarios Última Visita" value={newObraData['Comentarios Última Visita']} onChange={handleNewObraInputChange} rows={3}></textarea>
@@ -435,7 +389,6 @@ export default function App() {
       {obraDetails && !loading && !isCreateMode && (
         <div className="card details">
           <h2>Detalles de la Obra</h2>
-          {/* --- MODIFICADO: Formulario de Edición con tipos corregidos --- */}
           <div className="form-grid-details">
             <div className="form-column">
               <div className="form-field"><label>Empresa</label><input type="text" value={obraDetails['Empresa'] || ''} disabled /></div>
@@ -451,15 +404,11 @@ export default function App() {
               <div className="form-field"><label>Estado de Obra</label><select name="Estado de Obra" value={obraDetails['Estado de Obra'] || ''} onChange={handleInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
               <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?']} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
               <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={obraDetails['Observaciones de Compra'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
-              {/* --- TIPO MODIFICADO --- */}
               <div className="form-field"><label>Monto Presupuesto</label><input type="number" name="Monto Presupuesto" value={obraDetails['Monto Presupuesto'] || ''} onChange={handleInputChange} /></div>
-              {/* --- TIPO MODIFICADO --- */}
-              {/* (Nota: El valor debe estar en formato AAAA-MM-DD para 'date') */}
-              <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={obraDetails['Fecha Fin Obra'] ? new Date(obraDetails['Fecha Fin Obra']).toISOString().split('T')[0] : ''} onChange={handleInputChange} /></div>
+              <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={formatDateForInput(obraDetails['Fecha Fin Obra'])} onChange={handleInputChange} /></div>
             </div>
             <div className="form-column">
               <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={obraDetails['Descripción de la obra o PDV'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
-              {/* --- TIPO MODIFICADO --- */}
               <div className="form-field"><label>M²</label><input type="number" name="M²" value={obraDetails['M²'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Nombre Contacto</label><input type="text" name="Nombre Contacto" value={obraDetails['Nombre Contacto'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Cargo Contacto</label><input type="text" name="Cargo Contacto" value={obraDetails['Cargo Contacto'] || ''} onChange={handleInputChange} /></div>
