@@ -382,7 +382,7 @@ export default function App() {
             </div>
             <div className="actions">
               <button onClick={() => setIsCreateMode(false)} className="secondary-button">Cancelar</button>
-              <button onClick={handleCreateObra} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Nueva Obra'}</button>
+              <button onClick={handleCreateObra} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Nuevo PdV'}</button>
             </div>
           </div>
         )}
