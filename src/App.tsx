@@ -5,7 +5,7 @@ import './App.css'; // <--- IMPORTACIÓN DE ESTILOS AÑADIDA
 
 // --- Base de Datos Local ---
 export const canalOptions = [
-  'Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande', 'Ferretería', 'Distribuidor', 'Especialista', 'Distribuidor Grandes Supericies', 'Instalador Eifs', 'E-Commerce', 'Industrial',
+  'Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande', 'Ferretería', 'Distribuidor', 'Especialista', 'Distribuidor Grandes Supericies', 'Instalador', 'E-Commerce', 'Industrial',
 ];
 export const vendedorOptions = [
   "Andrés Pacheco", "Eduardo Arias", "David Fuentealba", "Diego Montenegro", "Jorge Nario", "Leonel Angulo", "Loreto Medina", "Mónica Valencia", "Vendedor General CA"
