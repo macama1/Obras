@@ -79,7 +79,10 @@ const GlobalStyles = () => (
 
     .form-grid-details {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      /* --- MODIFICADO --- */
+      /* Forzamos 2 columnas limpias en escritorio */
+      grid-template-columns: 1fr 1fr; 
+      /* --- FIN MODIFICACIÓN --- */
       gap: 1.5rem 2rem;
     }
 
@@ -268,9 +271,12 @@ const GlobalStyles = () => (
 
     /* --- AÑADIDO: Bloque de Contacto --- */
     .contact-block {
-      margin-top: 2rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid var(--color-borde);
+      /* --- MODIFICADO --- */
+      /* Ya no necesita margen ni borde superior, será parte del grid */
+      /* margin-top: 2rem; */
+      /* padding-top: 1.5rem; */
+      /* border-top: 1px solid var(--color-borde); */
+      /* --- FIN MODIFICACIÓN --- */
     }
     
     .contact-title { /* Es un <h3> pero lo estilizamos */
@@ -282,12 +288,21 @@ const GlobalStyles = () => (
     /* --- FIN DE ESTILOS AÑADIDOS --- */
 
     /* --- Responsivo --- */
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) { /* Tablet landscape */
+      /* --- ELIMINADO --- */
+      /* Ya no es necesario, el default es 2 columnas */
+      /* .form-grid-details {
+        grid-template-columns: 1fr 1fr; 
+      } */
+      /* --- FIN ELIMINADO --- */
+    }
+
+    @media (max-width: 768px) { /* Tablet portrait / Móvil */
       .form-grid {
         grid-template-columns: 1fr;
       }
       .form-grid-details {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr; /* Pasa a 1 columna */
       }
       .actions {
         flex-direction: column;
@@ -628,11 +643,11 @@ export default function App() {
         ) : (
           <div>
             <h2>Agregar Nuevo PdV en {selectedRegion}</h2>
+            {/* --- MODIFICADO: Se eliminaron los divs "form-column" --- */}
             <div className="form-grid-details">
-              {/* --- COLUMNA 1 --- */}
-              <div className="form-column">
-                <div className="form-field">
-                  <label>Empresa</label>
+              {/* Todos los campos ahora son hijos directos del grid */}
+              <div className="form-field">
+                <label>Empresa</label>
                   <AutocompleteInput 
                     value={newCompanyInput}
                     onChange={(e) => {
@@ -656,17 +671,15 @@ export default function App() {
                     placeholder="Busque o ingrese empresa..."
                     disabled={loading}
                   />
-                </div>
-                <div className="form-field"><label>Rut Empresa</label><input type="text" name="Rut Empresa" value={newObraData['Rut Empresa']} onChange={handleNewObraInputChange} /></div>
-                {/* --- CAMPO DESTACADO --- */}
+              </div>
+              <div className="form-field"><label>Rut Empresa</label><input type="text" name="Rut Empresa" value={newObraData['Rut Empresa']} onChange={handleNewObraInputChange} /></div>
+              {/* --- CAMPO DESTACADO --- */}
                 <div className="form-field field-highlight"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Vendedor</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
                 <div className="form-field"><label>Canal</label><select name="Canal" value={newObraData['Canal']} onChange={handleNewObraInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-              </div>
-              {/* --- COLUMNA 2 --- */}
-              <div className="form-column">
-                <div className="form-field"><label>Región</label><input type="text" value={newObraData['Región']} disabled /></div>
-                <div className="form-field">
+              
+              <div className="form-field"><label>Región</label><input type="text" value={newObraData['Región']} disabled /></div>
+              <div className="form-field">
                   <label>Comuna</label>
                   <AutocompleteInput value={comunaInput} onChange={(e) => { setComunaInput(e.target.value); setNewObraData(prev => ({...prev, 'Comuna': e.target.value})); }} onSuggestionClick={(comuna) => { setComunaInput(comuna); setNewObraData(prev => ({...prev, 'Comuna': comuna})); setComunaSuggestions([]); }} suggestions={comunaSuggestions} placeholder="Busque una comuna..." disabled={false} />
                 </div>
@@ -674,22 +687,17 @@ export default function App() {
                 <div className="form-field"><label>Monto Presupuesto</label><input type="number" name="Monto Presupuesto" value={newObraData['Monto Presupuesto']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={newObraData['Fecha Fin Obra']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={newObraData['Observaciones de Compra']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
-              </div>
-              {/* --- COLUMNA 3 (MODIFICADA) --- */}
-              <div className="form-column">
-                <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={newObraData['Tipo Construcción']} onChange={handleNewObraInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
-                {/* --- CAMPO DESTACADO --- */}
-                <div className="form-field field-highlight"><label>Estado de la Obra</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
+              
+              <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={newObraData['Tipo Construcción']} onChange={handleNewObraInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
+              {/* --- CAMPO DESTACADO --- */}
+                <div className="form-field field-highlight"><label>*ESTADO DE LA OBRA*</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={newObraData['Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
-                <div className="form-field"><label>M² (Terminaciones)</label><input type="number" name="M²" value={newObraData['M²']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={newObraData['Descripción de la obra o PDV']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
-              </div>
-            </div>
-            
-            {/* --- BLOQUE DE CONTACTO MODIFICADO --- */}
-            <div className="contact-block">
-              <h3 className="contact-title">Contacto</h3>
-              <div className="form-field full-width"> {/* Se usa full-width para un solo campo */}
+                <div className="form-field"><label>M²</label><input type="number" name="M²" value={newObraData['M²']} onChange={handleNewObraInputChange} /></div>
+              <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={newObraData['Descripción de la obra o PDV']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
+              
+              {/* --- BLOQUE DE CONTACTO MODIFICADO (ahora parte del grid) --- */}
+              <div className="form-field">
+                <label>Contacto</label>
                 <textarea 
                   name="Contacto" 
                   value={newObraData['Contacto']} 
@@ -698,13 +706,20 @@ export default function App() {
                   placeholder="Ingrese información de contacto (nombre, email, teléfono, cargo, etc.)"
                 />
               </div>
-            </div>
-            {/* --- FIN DEL BLOQUE MODIFICADO --- */}
+              {/* --- FIN DEL BLOQUE MODIFICADO --- */}
 
-            <div className="form-field full-width" style={{ marginTop: '1.5rem' }}>
-              <label>Comentarios Iniciales (Opcional)</label>
-              <textarea name="Comentarios Última Visita" value={newObraData['Comentarios Última Visita']} onChange={handleNewObraInputChange} rows={3}></textarea>
-            </div>
+              {/* --- Comentarios ahora es parte del grid --- */}
+              {/* --- CORRECCIÓN DE ERROR DE TIPEADO --- */}
+              <div className="form-field">
+              {/* --- FIN DE LA CORRECCIÓN --- */}
+                <label>Comentarios Iniciales (Opcional)</label>
+                <textarea name="Comentarios Última Visita" value={newObraData['Comentarios Última Visita']} onChange={handleNewObraInputChange} rows={3}></textarea>
+              </div>
+
+            </div> {/* Fin de form-grid-details */}
+            
+            {/* <div className="form-field full-width" style={{ marginTop: '1.5rem' }}> ... </div> */} {/* Esto se movió arriba */}
+            
             <div className="actions">
               <button onClick={() => setIsCreateMode(false)} className="secondary-button">Cancelar</button>
               <button onClick={handleCreateObra} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Nuevo PdV'}</button>
@@ -719,39 +734,32 @@ export default function App() {
       {obraDetails && !loading && !isCreateMode && (
         <div className="card details">
           <h2>Detalles de la Obra</h2>
+          {/* --- MODIFICADO: Se eliminaron los divs "form-column" --- */}
           <div className="form-grid-details">
-            {/* --- COLUMNA 1 --- */}
-            <div className="form-column">
-              <div className="form-field"><label>Empresa</label><input type="text" value={obraDetails['Empresa'] || ''} disabled /></div>
-              {/* --- CAMPO DESTACADO --- */}
+            {/* Todos los campos ahora son hijos directos del grid */}
+            <div className="form-field"><label>Empresa</label><input type="text" value={obraDetails['Empresa'] || ''} disabled /></div>
+            {/* --- CAMPO DESTACADO --- */}
               <div className="form-field field-highlight"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={obraDetails['Obra / PDV'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Vendedor</label><input type="text" value={obraDetails['Vendedor'] || ''} disabled /></div>
               <div className="form-field"><label>Canal</label><input type="text" value={obraDetails['Canal'] || ''} disabled /></div>
               <div className="form-field"><label>Región</label><input type="text" value={obraDetails['Región'] || ''} disabled /></div>
               <div className="form-field"><label>Comuna</label><input type="text" value={obraDetails['Comuna'] || ''} disabled /></div>
               <div className="form-field"><label>*DIRECCIÓN*</label><input type="text" name="Dirección" value={obraDetails['Dirección'] || ''} onChange={handleInputChange} /></div>
-            </div>
-            {/* --- COLUMNA 2 --- */}
-            <div className="form-column">
-              <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
-              {/* --- CAMPO DESTACADO --- */}
+            
+            <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
+            {/* --- CAMPO DESTACADO --- */}
               <div className="form-field field-highlight"><label>Estado de Obra</label><select name="Estado de Obra" value={obraDetails['Estado de Obra'] || ''} onChange={handleInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
               <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?']} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
               <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={obraDetails['Observaciones de Compra'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
               <div className="form-field"><label>Monto Presupuesto</label><input type="number" name="Monto Presupuesto" value={obraDetails['Monto Presupuesto'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={formatDateForInput(obraDetails['Fecha Fin Obra'])} onChange={handleInputChange} /></div>
-            </div>
-            {/* --- COLUMNA 3 (MODIFICADA) --- */}
-            <div className="form-column">
-              <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={obraDetails['Descripción de la obra o PDV'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
-              <div className="form-field"><label>M²</label><input type="number" name="M²" value={obraDetails['M²'] || ''} onChange={handleInputChange} /></div>
-            </div>
-          </div>
-
-          {/* --- BLOQUE DE CONTACTO MODIFICADO --- */}
-          <div className="contact-block">
-            <h3 className="contact-title">Contacto</h3>
-            <div className="form-field full-width"> {/* Se usa full-width para un solo campo */}
+            
+            <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={obraDetails['Descripción de la obra o PDV'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
+            <div className="form-field"><label>M²</label><input type="number" name="M²" value={obraDetails['M²'] || ''} onChange={handleInputChange} /></div>
+           
+            {/* --- BLOQUE DE CONTACTO MODIFICADO (ahora parte del grid) --- */}
+            <div className="form-field">
+              <label>Contacto</label>
               <textarea 
                 name="Contacto" 
                 value={obraDetails['Contacto'] || ''} 
@@ -759,15 +767,18 @@ export default function App() {
                 rows={4} // Un poco más de espacio
               />
             </div>
-          </div>
-          {/* --- FIN DEL BLOQUE MODIFICADO --- */}
+            {/* --- FIN DEL BLOQUE MODIFICADO --- */}
 
-          <div className="form-column" style={{gridColumn: '1 / -1', marginTop: '1.5rem'}}>
+            {/* --- Campos del final ahora son parte del grid --- */}
             <div className="form-field"><label>Acciones Última Reunion</label><textarea value={obraDetails['Acciones Última Reunion'] || ''} rows={2} disabled></textarea></div>
             <div className="form-field"><label>Comentarios Última Visita</label><textarea name="Comentarios Última Visita" value={obraDetails['Comentarios Última Visita'] || ''} onChange={handleInputChange} rows={4}></textarea></div>
             <div className="form-field"><label>Rut Empresa</label><textarea name="Rut Empresa" value={obraDetails['Rut Empresa'] || ''} onChange={handleInputChange} rows={1}></textarea></div>
             <div className="form-field"><label>Última Actualización</label><input type="text" value={formatDate(obraDetails['Última Actualización'])} disabled /></div>
-          </div>
+          
+          </div> {/* Fin de form-grid-details */}
+
+          {/* <div className="contact-block"> ... </div> */} {/* Eliminado de aquí */}
+          {/* <div className="form-column" ...> ... </div> */} {/* Eliminado de aquí */}
 
           <div className="actions">
             <button onClick={handleSaveChanges} disabled={loading}>
