@@ -5,8 +5,8 @@ const GlobalStyles = () => (
   <style>{`
     /* --- Estilos Globales --- */
     :root {
-      --color-primario: #1a1a1a; /* <-- CAMBIADO A NEGRO NATSTONE */
-      --color-secundario: #F97316; /* <-- CAMBIADO A NARANJA NATSTONE (tipo Tailwind Orange 500) */
+      --color-primario: #1a1a1a;
+      --color-secundario: #F97316;
       --color-fondo: #f4f7f6;
       --color-tarjeta: #ffffff;
       --color-borde: #dfe6e9;
@@ -16,7 +16,6 @@ const GlobalStyles = () => (
       --color-exito: #2ecc71;
       --sombra: 0 4px 12px rgba(0, 0, 0, 0.05);
       --radio-borde: 8px;
-      /* --- AÑADIDO: Colores Natstone --- */
       --color-natstone-orange: #F97316;
       --color-natstone-black: #1a1a1a;
     }
@@ -67,7 +66,7 @@ const GlobalStyles = () => (
     }
 
     .card.details {
-      border-top: 4px solid var(--color-secundario); /* <-- Ahora será naranja */
+      border-top: 4px solid var(--color-secundario);
     }
 
     /* --- Formularios --- */
@@ -79,10 +78,7 @@ const GlobalStyles = () => (
 
     .form-grid-details {
       display: grid;
-      /* --- MODIFICADO --- */
-      /* Forzamos 2 columnas limpias en escritorio */
       grid-template-columns: 1fr 1fr; 
-      /* --- FIN MODIFICACIÓN --- */
       gap: 1.5rem 2rem;
     }
 
@@ -134,7 +130,7 @@ const GlobalStyles = () => (
     input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: var(--color-secundario);
-      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2); /* Sombra naranja al enfocar */
+      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
     }
 
     textarea {
@@ -192,12 +188,12 @@ const GlobalStyles = () => (
       border-radius: var(--radio-borde);
       cursor: pointer;
       transition: background-color 0.2s, transform 0.1s;
-      background-color: var(--color-secundario); /* <-- Ahora será naranja */
+      background-color: var(--color-secundario);
       color: white;
     }
 
     button:hover {
-      background-color: #EA580C; /* <-- Naranja más oscuro */
+      background-color: #EA580C;
     }
 
     button:active {
@@ -210,12 +206,12 @@ const GlobalStyles = () => (
     }
 
     button.secondary-button {
-      background-color: var(--color-natstone-black); /* <-- CAMBIADO A NEGRO */
+      background-color: var(--color-natstone-black);
       color: white;
     }
 
     button.secondary-button:hover {
-      background-color: #333; /* <-- Negro más claro */
+      background-color: #333;
     }
 
     /* --- Mensajes y Carga --- */
@@ -238,71 +234,55 @@ const GlobalStyles = () => (
       display: none;
     }
 
-    .message[class*="✅"] { /* Si contiene emoji de éxito */
+    .message[class*="✅"] {
       background-color: #eafaf1;
       color: #2ecc71;
     }
 
-    .message[class*="❌"] { /* Si contiene emoji de error */
+    .message[class*="❌"] {
       background-color: #fbeae9;
       color: #e74c3c;
     }
 
-    /* --- AÑADIDO: Estilo para campos destacados --- */
+    /* --- Estilo para campos destacados --- */
     .field-highlight label {
-      color: var(--color-natstone-orange); /* Label naranja */
-      font-weight: 700; /* Más destacado */
+      color: var(--color-natstone-orange);
+      font-weight: 700;
       font-size: 0.9rem;
     }
     
     .field-highlight input[type="text"],
     .field-highlight select {
-      border-width: 2px; /* Borde más grueso */
-      border-color: var(--color-natstone-orange); /* Borde naranja */
+      border-width: 2px;
+      border-color: var(--color-natstone-orange);
     }
 
-    /* También anular el color de foco */
     .field-highlight input:focus,
     .field-highlight select:focus {
         border-color: var(--color-natstone-orange);
-        box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3); /* Sombra naranja */
-    }
-    /* --- FIN DE ESTILOS AÑADIDOS --- */
-
-    /* --- AÑADIDO: Bloque de Contacto --- */
-    .contact-block {
-      /* --- MODIFICADO --- */
-      /* Ya no necesita margen ni borde superior, será parte del grid */
-      /* margin-top: 2rem; */
-      /* padding-top: 1.5rem; */
-      /* border-top: 1px solid var(--color-borde); */
-      /* --- FIN MODIFICACIÓN --- */
+        box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3);
     }
     
-    .contact-title { /* Es un <h3> pero lo estilizamos */
+    .contact-block {
+    }
+    
+    .contact-title { 
       font-size: 1.25rem;
       color: var(--color-primario);
       margin-bottom: 1rem;
       font-weight: 600;
     }
-    /* --- FIN DE ESTILOS AÑADIDOS --- */
 
     /* --- Responsivo --- */
-    @media (max-width: 1024px) { /* Tablet landscape */
-      /* --- ELIMINADO --- */
-      /* Ya no es necesario, el default es 2 columnas */
-      /* .form-grid-details {
-        grid-template-columns: 1fr 1fr; 
-      } */
-      /* --- FIN ELIMINADO --- */
+    @media (max-width: 1024px) {
     }
 
-    @media (max-width: 768px) { /* Tablet portrait / Móvil */
+    @media (max-width: 768px) {
       .form-grid {
         grid-template-columns: 1fr;
       }
       .form-grid-details {
-        grid-template-columns: 1fr; /* Pasa a 1 columna */
+        grid-template-columns: 1fr;
       }
       .actions {
         flex-direction: column;
@@ -327,7 +307,7 @@ export const estadoObraOptions = [
   'No Aplica','Cierre Perimetral', 'Limpieza y Demolición', 'Instalación de Faena', 'Obras Preliminares', 'Movimiento de Tierra', 'Excavaciones', 'Fundaciones', 'Obra Gruesa -20%', 'Obra Gruesa 20% ~ 50%', 'Obra Gruesa +50%', 'Terminaciones -20%', 'Terminaciones 20% ~ 50%', 'Terminaciones +50%', 'Terminada', 'Detenida', 'Post Venta',
 ];
 export const tipoConstruccionOptions = [
-  "No Aplica", "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas", "Deportiva", "Culto"
+  "No Aplica", "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas", "Deportiva", "Culto", "Salud"
 ];
 export const lesVendemosOptions = ['Sí', 'No'];
 export const regionesYComunas = [
@@ -350,13 +330,13 @@ export const regionesYComunas = [
 ];
 
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLdKl0sfkjUbVJWPM6HLG98Cu3G4wfYhgSmEk_pUTPWHhMXgw/exec"; // <--- ⚠️ ¡RECUERDA REEMPLAZAR ESTA URL CON LA NUEVA!
+const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLdKl0sfkjUbVJWPM6HLG98Cu3G4wfYhgSmEk_pUTPWHhMXgw/exec"; 
 
 // --- Interfaces ---
 interface ObraDetails { [key: string]: any; }
-interface ClientInfo { empresa: string; rut: string; } // <-- AÑADIDO
+interface ClientInfo { empresa: string; rut: string; }
 
-// --- Componente de Autocompletado (Corregido) ---
+// --- Componente de Autocompletado ---
 const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, placeholder, disabled }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onSuggestionClick: (suggestion: string) => void; suggestions: string[]; placeholder: string; disabled: boolean; }) => {
   const [showSuggestions, setShowSuggestions] = useState(true);
 
@@ -379,7 +359,7 @@ const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, pl
         disabled={disabled} 
         autoComplete="off" 
         onFocus={() => setShowSuggestions(true)}
-        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
+        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
       />
       {showSuggestions && suggestions.length > 0 && (
         <ul className="suggestions-list">
@@ -398,10 +378,7 @@ const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, pl
 // --- Estado Inicial para una Nueva Obra ---
 const initialNewObraState = {
   'Empresa': '', 'Obra / PDV': '', 'Vendedor': '', 'Canal': '', 'Tipo Construcción': '', 'Región': '', 'Comuna': '', 'Dirección': '', 'Estado de Obra': '', 'Les Vendemos?': '', 'Observaciones de Compra': '', 'Descripción de la obra o PDV': '', 'M²': '', 
-  // --- CAMPOS DE CONTACTO MODIFICADOS ---
-  // 'Nombre Contacto': '', 'Cargo Contacto': '', 'Email Contacto': '', 'Teléfono Contacto': '', 'Contacto Administrador': '', // <-- Eliminados
-  'Contacto': '', // <-- Añadido
-  // --- FIN DE LA MODIFICACIÓN ---
+  'Contacto': '', 
   'Comentarios Última Visita': '', 'Rut Empresa': '', 'Monto Presupuesto': '', 'Fecha Fin Obra': ''
 };
 
@@ -410,7 +387,7 @@ export default function App() {
   // --- Estados ---
   const [selectedRegion, setSelectedRegion] = useState('');
   const [allData, setAllData] = useState<ObraDetails[]>([]);
-  const [clientList, setClientList] = useState<ClientInfo[]>([]); // <-- CAMBIADO DE string[]
+  const [clientList, setClientList] = useState<ClientInfo[]>([]);
   const [companyInput, setCompanyInput] = useState('');
   const [companySuggestions, setCompanySuggestions] = useState<string[]>([]);
   const [selectedCompany, setSelectedCompany] = useState('');
@@ -425,7 +402,7 @@ export default function App() {
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [newObraData, setNewObraData] = useState<ObraDetails>(initialNewObraState);
   const [newCompanyInput, setNewCompanyInput] = useState('');
-  const [newCompanySuggestions, setNewCompanySuggestions] = useState<ClientInfo[]>([]); // <-- CAMBIADO DE string[]
+  const [newCompanySuggestions, setNewCompanySuggestions] = useState<ClientInfo[]>([]);
 
   // --- Carga Inicial de Clientes ---
   useEffect(() => {
@@ -434,7 +411,7 @@ export default function App() {
         const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getClientList' }) });
         const data = await response.json();
         if (data.status === 'success') {
-          setClientList(data.data); // <-- Esto ahora recibe [{empresa, rut}, ...]
+          setClientList(data.data);
         }
       } catch (error) {
         console.error('No se pudo cargar la lista de clientes.');
@@ -477,7 +454,6 @@ export default function App() {
   
   useEffect(() => {
     if (newCompanyInput.length < 2) { setNewCompanySuggestions([]); return; }
-    // AHORA FILTRA OBJETOS BASADO EN LA PROPIEDAD 'empresa'
     const filtered = clientList.filter(c => c.empresa && c.empresa.toLowerCase().includes(newCompanyInput.toLowerCase()));
     setNewCompanySuggestions(filtered.slice(0, 10));
   }, [newCompanyInput, clientList]);
@@ -570,21 +546,15 @@ export default function App() {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
-    // Maneja formato AAAA-MM-DD del input date
     if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const parts = dateString.split('-');
-      // new Date(year, monthIndex, day)
       const utcDate = new Date(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
       return utcDate.toLocaleDateString('es-CL', { timeZone: 'UTC' });
     }
     const date = new Date(dateString);
-    // --- AQUÍ ESTÁ LA CORRECCIÓN ---
-    // Se cambió de toLocaleString a toLocaleDateString y se añadió timeZone: 'UTC' para consistencia
     return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('es-CL', { timeZone: 'UTC' });
-    // --- FIN DE LA CORRECCIÓN ---
   };
   
-  // Función para formatear la fecha para el input type="date"
   const formatDateForInput = (dateString: string) => {
     if (!dateString) return '';
     try {
@@ -598,7 +568,7 @@ export default function App() {
 
   return (
     <div className="container">
-      <GlobalStyles /> {/* <-- ESTILOS INYECTADOS AQUÍ */}
+      <GlobalStyles />
       <h1>RADAR COMERCIAL</h1>
       <div className="card">
         {!isCreateMode ? (
@@ -643,37 +613,28 @@ export default function App() {
         ) : (
           <div>
             <h2>Agregar Nuevo PdV en {selectedRegion}</h2>
-            {/* --- MODIFICADO: Se eliminaron los divs "form-column" --- */}
             <div className="form-grid-details">
-              {/* Todos los campos ahora son hijos directos del grid */}
               <div className="form-field">
                 <label>Empresa</label>
                   <AutocompleteInput 
                     value={newCompanyInput}
                     onChange={(e) => {
                       setNewCompanyInput(e.target.value);
-                      // Borra el RUT si el usuario escribe manually
                       setNewObraData(prev => ({...prev, 'Empresa': e.target.value, 'Rut Empresa': ''}));
                     }}
                     onSuggestionClick={(suggestion) => {
-                      // --- LÓGICA DE AUTOCOMPLETADO DE RUT ---
                       const foundClient = clientList.find(c => c.empresa === suggestion);
                       const clientRut = foundClient ? foundClient.rut : '';
-
                       setNewCompanyInput(suggestion);
-                      // Setea AMBOS, Empresa y Rut Empresa
                       setNewObraData(prev => ({...prev, 'Empresa': suggestion, 'Rut Empresa': clientRut }));
                       setNewCompanySuggestions([]);
-                      // --- FIN DE LA LÓGICA ---
                     }}
-                    // Mapea los objetos a strings para el componente
                     suggestions={newCompanySuggestions.map(c => c.empresa)}
                     placeholder="Busque o ingrese empresa..."
                     disabled={loading}
                   />
               </div>
               <div className="form-field"><label>Rut Empresa</label><input type="text" name="Rut Empresa" value={newObraData['Rut Empresa']} onChange={handleNewObraInputChange} /></div>
-              {/* --- CAMPO DESTACADO --- */}
                 <div className="form-field field-highlight"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field"><label>Vendedor</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
                 <div className="form-field"><label>Canal</label><select name="Canal" value={newObraData['Canal']} onChange={handleNewObraInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
@@ -684,41 +645,32 @@ export default function App() {
                   <AutocompleteInput value={comunaInput} onChange={(e) => { setComunaInput(e.target.value); setNewObraData(prev => ({...prev, 'Comuna': e.target.value})); }} onSuggestionClick={(comuna) => { setComunaInput(comuna); setNewObraData(prev => ({...prev, 'Comuna': comuna})); setComunaSuggestions([]); }} suggestions={comunaSuggestions} placeholder="Busque una comuna..." disabled={false} />
                 </div>
                 <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field"><label>Monto Presupuesto</label><input type="number" name="Monto Presupuesto" value={newObraData['Monto Presupuesto']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={newObraData['Fecha Fin Obra']} onChange={handleNewObraInputChange} /></div>
+                
+                {/* CAMPOS ELIMINADOS: Monto Presupuesto y Fecha Fin Obra */}
+                
                 <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={newObraData['Observaciones de Compra']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
               
               <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={newObraData['Tipo Construcción']} onChange={handleNewObraInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
-              {/* --- CAMPO DESTACADO --- */}
+              
                 <div className="form-field field-highlight"><label>*ESTADO DE LA OBRA*</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={newObraData['Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
                 <div className="form-field"><label>M²</label><input type="number" name="M²" value={newObraData['M²']} onChange={handleNewObraInputChange} /></div>
               <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={newObraData['Descripción de la obra o PDV']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
               
-              {/* --- BLOQUE DE CONTACTO MODIFICADO (ahora parte del grid) --- */}
               <div className="form-field">
                 <label>Contacto</label>
                 <textarea 
                   name="Contacto" 
                   value={newObraData['Contacto']} 
                   onChange={handleNewObraInputChange} 
-                  rows={4} // Un poco más de espacio
+                  rows={4} 
                   placeholder="Ingrese información de contacto (nombre, email, teléfono, cargo, etc.)"
                 />
               </div>
-              {/* --- FIN DEL BLOQUE MODIFICADO --- */}
 
-              {/* --- Comentarios ahora es parte del grid --- */}
-              {/* --- CORRECCIÓN DE ERROR DE TIPEADO --- */}
-              <div className="form-field">
-              {/* --- FIN DE LA CORRECCIÓN --- */}
-                <label>Comentarios Iniciales (Opcional)</label>
-                <textarea name="Comentarios Última Visita" value={newObraData['Comentarios Última Visita']} onChange={handleNewObraInputChange} rows={3}></textarea>
-              </div>
+              {/* CAMPO ELIMINADO: Comentarios Iniciales (Opcional) */}
 
-            </div> {/* Fin de form-grid-details */}
-            
-            {/* <div className="form-field full-width" style={{ marginTop: '1.5rem' }}> ... </div> */} {/* Esto se movió arriba */}
+            </div> 
             
             <div className="actions">
               <button onClick={() => setIsCreateMode(false)} className="secondary-button">Cancelar</button>
@@ -734,11 +686,8 @@ export default function App() {
       {obraDetails && !loading && !isCreateMode && (
         <div className="card details">
           <h2>Detalles de la Obra</h2>
-          {/* --- MODIFICADO: Se eliminaron los divs "form-column" --- */}
           <div className="form-grid-details">
-            {/* Todos los campos ahora son hijos directos del grid */}
             <div className="form-field"><label>Empresa</label><input type="text" value={obraDetails['Empresa'] || ''} disabled /></div>
-            {/* --- CAMPO DESTACADO --- */}
               <div className="form-field field-highlight"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={obraDetails['Obra / PDV'] || ''} onChange={handleInputChange} /></div>
               <div className="form-field"><label>Vendedor</label><input type="text" value={obraDetails['Vendedor'] || ''} disabled /></div>
               <div className="form-field"><label>Canal</label><input type="text" value={obraDetails['Canal'] || ''} disabled /></div>
@@ -747,38 +696,31 @@ export default function App() {
               <div className="form-field"><label>*DIRECCIÓN*</label><input type="text" name="Dirección" value={obraDetails['Dirección'] || ''} onChange={handleInputChange} /></div>
             
             <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
-            {/* --- CAMPO DESTACADO --- */}
               <div className="form-field field-highlight"><label>Estado de Obra</label><select name="Estado de Obra" value={obraDetails['Estado de Obra'] || ''} onChange={handleInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
               <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?']} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
               <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={obraDetails['Observaciones de Compra'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
-              <div className="form-field"><label>Monto Presupuesto</label><input type="number" name="Monto Presupuesto" value={obraDetails['Monto Presupuesto'] || ''} onChange={handleInputChange} /></div>
-              <div className="form-field"><label>Fecha Fin Obra</label><input type="date" name="Fecha Fin Obra" value={formatDateForInput(obraDetails['Fecha Fin Obra'])} onChange={handleInputChange} /></div>
+              
+              {/* CAMPOS ELIMINADOS EN DETALLES: Monto Presupuesto y Fecha Fin Obra */}
             
             <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={obraDetails['Descripción de la obra o PDV'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
             <div className="form-field"><label>M²</label><input type="number" name="M²" value={obraDetails['M²'] || ''} onChange={handleInputChange} /></div>
            
-            {/* --- BLOQUE DE CONTACTO MODIFICADO (ahora parte del grid) --- */}
             <div className="form-field">
               <label>Contacto</label>
               <textarea 
                 name="Contacto" 
                 value={obraDetails['Contacto'] || ''} 
                 onChange={handleInputChange} 
-                rows={4} // Un poco más de espacio
+                rows={4} 
               />
             </div>
-            {/* --- FIN DEL BLOQUE MODIFICADO --- */}
 
-            {/* --- Campos del final ahora son parte del grid --- */}
             <div className="form-field"><label>Acciones Última Reunion</label><textarea value={obraDetails['Acciones Última Reunion'] || ''} rows={2} disabled></textarea></div>
             <div className="form-field"><label>Comentarios Última Visita</label><textarea name="Comentarios Última Visita" value={obraDetails['Comentarios Última Visita'] || ''} onChange={handleInputChange} rows={4}></textarea></div>
             <div className="form-field"><label>Rut Empresa</label><textarea name="Rut Empresa" value={obraDetails['Rut Empresa'] || ''} onChange={handleInputChange} rows={1}></textarea></div>
             <div className="form-field"><label>Última Actualización</label><input type="text" value={formatDate(obraDetails['Última Actualización'])} disabled /></div>
           
-          </div> {/* Fin de form-grid-details */}
-
-          {/* <div className="contact-block"> ... </div> */} {/* Eliminado de aquí */}
-          {/* <div className="form-column" ...> ... </div> */} {/* Eliminado de aquí */}
+          </div> 
 
           <div className="actions">
             <button onClick={handleSaveChanges} disabled={loading}>
