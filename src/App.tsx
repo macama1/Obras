@@ -1,295 +1,300 @@
 import React, { useState, useEffect } from 'react';
 
-// --- COMPONENTE DE ESTILOS GLOBALES ---
+// --- COMPONENTE DE ESTILOS GLOBALES (DISEÑO MEJORADO + HERO + LOGO) ---
 const GlobalStyles = () => (
   <style>{`
-    /* --- Estilos Globales --- */
+    /* --- Variables y Reset --- */
     :root {
-      --color-primario: #1a1a1a;
-      --color-secundario: #F97316;
-      --color-fondo: #f4f7f6;
+      --color-primario: #1a1a1a;        /* Negro Natstone */
+      --color-secundario: #F97316;      /* Naranja Natstone */
+      --color-fondo: #f8fafc;           /* Gris azulado pálido */
       --color-tarjeta: #ffffff;
-      --color-borde: #dfe6e9;
-      --color-texto: #333;
-      --color-texto-secundario: #555;
-      --color-error: #e74c3c;
-      --color-exito: #2ecc71;
-      --sombra: 0 4px 12px rgba(0, 0, 0, 0.05);
-      --radio-borde: 8px;
-      --color-natstone-orange: #F97316;
-      --color-natstone-black: #1a1a1a;
+      --color-borde: #e2e8f0;
+      --color-texto: #334155;
+      --color-texto-secundario: #64748b;
+      --radio-borde: 12px;
+      --sombra-suave: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      --sombra-focus: 0 0 0 4px rgba(249, 115, 22, 0.15);
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background-color: var(--color-fondo);
       color: var(--color-texto);
       line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
     }
 
-    h1, h2 {
-      color: var(--color-primario);
-      margin-bottom: 1rem;
-    }
-
+    /* --- Títulos --- */
     h1 {
       text-align: center;
-      font-size: 2rem;
-      padding: 1rem 0;
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--color-primario);
+      margin: 1rem 0 2rem 0;
+      text-transform: uppercase;
     }
 
     h2 {
-      font-size: 1.5rem;
-      border-bottom: 2px solid var(--color-borde);
-      padding-bottom: 0.5rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--color-primario);
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--color-borde);
     }
 
-    /* --- Contenedor y Tarjetas --- */
+    /* --- Layout --- */
     .container {
-      max-width: 1000px;
-      margin: 20px auto;
-      padding: 0 20px;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 1.5rem 4rem 1.5rem;
     }
 
     .card {
       background-color: var(--color-tarjeta);
       border-radius: var(--radio-borde);
-      box-shadow: var(--sombra);
-      padding: 1.5rem 2rem;
-      margin-bottom: 1.5rem;
+      box-shadow: var(--sombra-suave);
+      border: 1px solid var(--color-borde);
+      padding: 2.5rem;
+      margin-bottom: 2rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-
+    
     .card.details {
-      border-top: 4px solid var(--color-secundario);
+      border-top: 5px solid var(--color-secundario);
     }
 
-    /* --- Formularios --- */
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-    }
-
-    .form-grid-details {
-      display: grid;
-      grid-template-columns: 1fr 1fr; 
-      gap: 1.5rem 2rem;
-    }
-
-    .form-column {
+    /* --- Estilos para la Pantalla de Bienvenida (Hero) --- */
+    .welcome-wrapper {
       display: flex;
       flex-direction: column;
-      gap: 1.25rem;
+      align-items: center;
+      justify-content: center;
+      min-height: 50vh;
+      text-align: center;
+    }
+
+    .welcome-card {
+      background: white;
+      padding: 3rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      max-width: 480px;
+      width: 100%;
+      border: 1px solid var(--color-borde);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .welcome-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, var(--color-secundario), #fb923c);
+    }
+
+    .hero-icon {
+      background-color: #fff7ed;
+      color: var(--color-secundario);
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem auto;
+    }
+
+    .welcome-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--color-primario);
+      margin-bottom: 0.5rem;
+    }
+
+    .welcome-subtitle {
+      color: var(--color-texto-secundario);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    /* --- Grillas --- */
+    .form-grid, .form-grid-details {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
     }
 
     .form-field {
       display: flex;
       flex-direction: column;
+      gap: 0.5rem;
     }
 
     .form-field.full-width {
       grid-column: 1 / -1;
     }
 
-    .form-field label {
+    /* --- Labels e Inputs --- */
+    label {
+      font-size: 0.8rem;
       font-weight: 600;
-      font-size: 0.875rem;
-      margin-bottom: 0.5rem;
       color: var(--color-texto-secundario);
       text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
-    input[type="text"],
-    input[type="email"],
-    input[type="tel"],
-    input[type="number"],
-    input[type="date"],
-    select,
-    textarea {
+    input, select, textarea {
       width: 100%;
-      padding: 0.75rem;
-      font-size: 1rem;
-      border: 1px solid var(--color-borde);
-      border-radius: var(--radio-borde);
+      padding: 0.875rem 1rem;
+      font-size: 0.95rem;
+      color: var(--color-primario);
       background-color: #fff;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      border: 1px solid var(--color-borde);
+      border-radius: 8px;
+      transition: all 0.2s ease-in-out;
+      appearance: none;
     }
 
-    input:disabled, select:disabled, textarea:disabled {
-      background-color: var(--color-fondo);
-      color: var(--color-texto-secundario);
-      cursor: not-allowed;
+    select {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 0.75rem center;
+      background-repeat: no-repeat;
+      background-size: 1.5em 1.5em;
+      padding-right: 2.5rem;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+      line-height: 1.5;
     }
 
     input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: var(--color-secundario);
-      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+      box-shadow: var(--sombra-focus);
     }
 
-    textarea {
-      resize: vertical;
-      min-height: 60px;
+    input:disabled, select:disabled {
+      background-color: #f1f5f9;
+      color: #94a3b8;
+      cursor: not-allowed;
     }
 
-    /* --- Autocompletado --- */
-    .autocomplete-container {
-      position: relative;
-    }
-
+    /* --- Autocomplete --- */
+    .autocomplete-container { position: relative; }
+    
     .suggestions-list {
       position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background-color: #fff;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: #fff;
       border: 1px solid var(--color-borde);
-      border-top: none;
-      border-radius: 0 0 var(--radio-borde) var(--radio-borde);
-      box-shadow: var(--sombra);
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      z-index: 100;
-      max-height: 200px;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+      z-index: 50;
+      max-height: 250px;
       overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .suggestions-list li {
       padding: 0.75rem 1rem;
       cursor: pointer;
+      font-size: 0.95rem;
+      border-bottom: 1px solid #f1f5f9;
     }
 
     .suggestions-list li:hover {
-      background-color: var(--color-fondo);
+      background-color: #fff7ed;
+      color: var(--color-secundario);
     }
 
-    /* --- Botones y Acciones --- */
+    /* --- Botones --- */
     .actions {
       display: flex;
       justify-content: flex-end;
       gap: 1rem;
+      margin-top: 2.5rem;
       padding-top: 1.5rem;
-      margin-top: 1.5rem;
-      border-top: 1px solid var(--color-borde);
+      border-top: 1px dashed var(--color-borde);
     }
 
     button {
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.875rem 1.75rem;
+      font-size: 0.95rem;
       font-weight: 600;
+      border-radius: 8px;
       border: none;
-      border-radius: var(--radio-borde);
       cursor: pointer;
-      transition: background-color 0.2s, transform 0.1s;
+      transition: all 0.2s;
       background-color: var(--color-secundario);
       color: white;
+      box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);
     }
 
     button:hover {
-      background-color: #EA580C;
+      background-color: #ea580c;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(249, 115, 22, 0.3);
     }
 
-    button:active {
-      transform: translateY(1px);
-    }
-
-    button:disabled {
-      background-color: #bdc3c7;
-      cursor: not-allowed;
-    }
+    button:active { transform: translateY(0); }
 
     button.secondary-button {
-      background-color: var(--color-natstone-black);
-      color: white;
+      background-color: white;
+      color: var(--color-primario);
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 
     button.secondary-button:hover {
-      background-color: #333;
+      background-color: #f8fafc;
+      border-color: #94a3b8;
+      color: black;
+    }
+    
+    button:disabled {
+      opacity: 0.7;
+      cursor: wait;
     }
 
-    /* --- Mensajes y Carga --- */
-    .loader {
-      text-align: center;
-      padding: 2rem;
-      font-weight: 600;
-      color: var(--color-texto-secundario);
+    /* --- Destacados y Mensajes --- */
+    .field-highlight input, .field-highlight select {
+      border-color: var(--color-secundario);
+      background-color: #fff7ed;
+    }
+    
+    .field-highlight label {
+      color: var(--color-secundario);
     }
 
     .message {
-      text-align: center;
-      font-weight: 600;
       padding: 1rem;
-      border-radius: var(--radio-borde);
-      margin-top: 1rem;
+      border-radius: 8px;
+      margin-top: 1.5rem;
+      text-align: center;
+      font-weight: 500;
     }
-
-    .message:empty {
-      display: none;
-    }
-
-    .message[class*="✅"] {
-      background-color: #eafaf1;
-      color: #2ecc71;
-    }
-
-    .message[class*="❌"] {
-      background-color: #fbeae9;
-      color: #e74c3c;
-    }
-
-    /* --- Estilo para campos destacados --- */
-    .field-highlight label {
-      color: var(--color-natstone-orange);
-      font-weight: 700;
-      font-size: 0.9rem;
-    }
-    
-    .field-highlight input[type="text"],
-    .field-highlight select {
-      border-width: 2px;
-      border-color: var(--color-natstone-orange);
-    }
-
-    .field-highlight input:focus,
-    .field-highlight select:focus {
-        border-color: var(--color-natstone-orange);
-        box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3);
-    }
-    
-    .contact-block {
-    }
-    
-    .contact-title { 
-      font-size: 1.25rem;
-      color: var(--color-primario);
-      margin-bottom: 1rem;
-      font-weight: 600;
-    }
+    .message[class*="✅"] { background-color: #dcfce7; color: #166534; }
+    .message[class*="❌"] { background-color: #fee2e2; color: #991b1b; }
+    .loader { text-align: center; color: var(--color-texto-secundario); padding: 2rem; }
 
     /* --- Responsivo --- */
-    @media (max-width: 1024px) {
-    }
-
     @media (max-width: 768px) {
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-      .form-grid-details {
-        grid-template-columns: 1fr;
-      }
-      .actions {
-        flex-direction: column;
-      }
-      button {
-        width: 100%;
-      }
+      .form-grid, .form-grid-details { grid-template-columns: 1fr; }
+      .card { padding: 1.5rem; }
+      .actions { flex-direction: column-reverse; }
+      button { width: 100%; }
     }
   `}</style>
 );
@@ -307,7 +312,7 @@ export const estadoObraOptions = [
   'No Aplica','Cierre Perimetral', 'Limpieza y Demolición', 'Instalación de Faena', 'Obras Preliminares', 'Movimiento de Tierra', 'Excavaciones', 'Fundaciones', 'Obra Gruesa -20%', 'Obra Gruesa 20% ~ 50%', 'Obra Gruesa +50%', 'Terminaciones -20%', 'Terminaciones 20% ~ 50%', 'Terminaciones +50%', 'Terminada', 'Detenida', 'Post Venta',
 ];
 export const tipoConstruccionOptions = [
-  "No Aplica", "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas", "Deportiva", "Culto"
+  "No Aplica", "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas", "Deportiva", "Culto", "Salud"
 ];
 export const lesVendemosOptions = ['Sí', 'No'];
 export const regionesYComunas = [
@@ -555,31 +560,80 @@ export default function App() {
     return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('es-CL', { timeZone: 'UTC' });
   };
   
-  // *** FUNCIÓN formatDateForInput ELIMINADA AQUÍ ***
-
   return (
     <div className="container">
       <GlobalStyles />
+      
+      {/* --- LOGO DE LA EMPRESA --- */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', marginTop: '2rem' }}>
+        <img 
+          src="/logo-natstone.png" 
+          alt="NatStone Logo" 
+          style={{ maxWidth: '250px', height: 'auto' }} 
+        />
+      </div>
+      
       <h1>RADAR COMERCIAL</h1>
-      <div className="card">
-        {!isCreateMode ? (
-          <>
-            <div className="form-grid">
-              <div className="form-field" style={{ gridColumn: '1 / -1' }}>
-                <label>1. Seleccione Región</label>
-                <select value={selectedRegion} onChange={(e) => {
-                  setSelectedRegion(e.target.value);
-                  setCompanyInput('');
-                  setSelectedCompany('');
-                  setSelectedObraId('');
-                }}>
-                  <option value="">-- Elija una región para comenzar --</option>
-                  {regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}
-                </select>
-              </div>
-            </div>
-            {selectedRegion && (
-              <>
+      
+      {!isCreateMode ? (
+        <>
+          {/* CASO 1: PANTALLA DE INICIO (HERO SECTION) */}
+          {!selectedRegion ? (
+             <div className="welcome-wrapper">
+               <div className="welcome-card">
+                 {/* Icono decorativo */}
+                 <div className="hero-icon">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="M3 21h18"/><path d="M5 21V7l8-4 8 4v14"/><path d="M17 21v-8.5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0-.5.5V21"/>
+                   </svg>
+                 </div>
+                 
+                 <h1 className="welcome-title">Bienvenido</h1>
+                 <p className="welcome-subtitle">Selecciona una región para gestionar obras y puntos de venta.</p>
+
+                 <div className="form-field">
+                    <label style={{textAlign: 'left'}}>Seleccione Región</label>
+                    <select 
+                      value={selectedRegion} 
+                      onChange={(e) => {
+                        setSelectedRegion(e.target.value);
+                        setCompanyInput('');
+                        setSelectedCompany('');
+                        setSelectedObraId('');
+                      }}
+                      style={{ padding: '1rem' }}
+                    >
+                      <option value="">-- Buscar zona geográfica --</option>
+                      {regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}
+                    </select>
+                 </div>
+               </div>
+               
+               <p style={{marginTop: '2rem', fontSize: '0.8rem', color: '#94a3b8'}}>
+                 © {new Date().getFullYear()} Natstone - Sistema de Gestión
+               </p>
+             </div>
+          ) : (
+            /* CASO 2: YA SELECCIONÓ REGIÓN (Buscador de empresas) */
+            <div className="card">
+                <div className="form-grid">
+                  <div className="form-field full-width">
+                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                        <label>Región Seleccionada</label>
+                        <button 
+                          className="secondary-button" 
+                          onClick={() => setSelectedRegion('')}
+                          style={{padding: '0.4rem 0.8rem', fontSize: '0.8rem'}}
+                        >
+                          ← Cambiar Región
+                        </button>
+                     </div>
+                     <div style={{fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--color-primario)'}}>
+                        {selectedRegion}
+                     </div>
+                  </div>
+                </div>
+
                 <div className="form-grid" style={{ marginTop: '1.5rem' }}>
                   <div className="form-field">
                     <label>2. Empresa</label>
@@ -598,11 +652,12 @@ export default function App() {
                     <button onClick={() => { setIsCreateMode(true); setComunaInput(''); setNewCompanyInput(''); setNewObraData({ ...initialNewObraState, 'Región': selectedRegion }); }} className="secondary-button">Agregar Nuevo Punto de Venta</button>
                   </div>
                 )}
-              </>
-            )}
-          </>
-        ) : (
-          <div>
+            </div>
+          )}
+        </>
+      ) : (
+        /* CASO 3: MODO CREAR NUEVA OBRA */
+        <div className="card">
             <h2>Agregar Nuevo PdV en {selectedRegion}</h2>
             <div className="form-grid-details">
               <div className="form-field">
@@ -637,7 +692,7 @@ export default function App() {
                 </div>
                 <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
                 
-                {/* CAMPOS ELIMINADOS: Monto Presupuesto y Fecha Fin Obra */}
+                {/* CAMPOS BORRADOS: Monto Presupuesto y Fecha Fin */}
                 
                 <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={newObraData['Observaciones de Compra']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
               
@@ -659,7 +714,7 @@ export default function App() {
                 />
               </div>
 
-              {/* CAMPO ELIMINADO: Comentarios Iniciales (Opcional) */}
+              {/* CAMPO BORRADO: Comentarios Iniciales */}
 
             </div> 
             
@@ -667,13 +722,13 @@ export default function App() {
               <button onClick={() => setIsCreateMode(false)} className="secondary-button">Cancelar</button>
               <button onClick={handleCreateObra} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Nuevo PdV'}</button>
             </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {loading && !selectedRegion && !isCreateMode && <div className="loader"></div>}
       {loading && selectedRegion && !isCreateMode && <div className="loader">Cargando datos de la región...</div>}
 
+      {/* CASO 4: DETALLES DE OBRA EXISTENTE */}
       {obraDetails && !loading && !isCreateMode && (
         <div className="card details">
           <h2>Detalles de la Obra</h2>
@@ -691,7 +746,7 @@ export default function App() {
               <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?']} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
               <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={obraDetails['Observaciones de Compra'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
               
-              {/* CAMPOS ELIMINADOS EN DETALLES: Monto Presupuesto y Fecha Fin Obra */}
+              {/* CAMPOS BORRADOS: Monto y Fecha Fin */}
             
             <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={obraDetails['Descripción de la obra o PDV'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
             <div className="form-field"><label>M²</label><input type="number" name="M²" value={obraDetails['M²'] || ''} onChange={handleInputChange} /></div>
