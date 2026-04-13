@@ -303,7 +303,7 @@ const GlobalStyles = () => (
 
 // --- Base de Datos Local ---
 export const canalOptions = [
-  'Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande', 'Ferretería', 'Distribuidor', 'Especialista', 'Distribuidor Grandes Supericies', 'Instalador', 'E-Commerce', 'Industrial',
+  'Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande', 'Ferretería', 'Distribuidor', 'Especialista', 'Distribuidor Grandes Supericies', 'Instalador', 'Particular', 'Industrial',
 ];
 export const vendedorOptions = [
   "Andrés Pacheco", "Eduardo Arias", "David Fuentealba", "Manuel Urzúa", "Jorge Nario", "Loreto Medina", "Mauricio Carvajal", "Mónica Valencia", "Vendedor General CA", "Vendedor General Peg&Mort (RH)"
