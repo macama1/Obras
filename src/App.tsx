@@ -573,7 +573,7 @@ export default function App() {
         />
       </div>
       
-      <h1>RADAR COMERCIAL</h1>
+      <h1>MONITOR DE OBRAS</h1>
       
       {!isCreateMode ? (
         <>
