@@ -309,7 +309,7 @@ export const vendedorOptions = [
   "Andres Pacheco", "Eduardo Arias", "Jorge Nario", "Lissett Santana", "Loreto Medina", "Manuel Urzúa", "Mauricio Carvajal", "Mónica Valencia", "Vendedor General CA", "Vendedor General Peg&Mort (RH)"
 ];
 export const estadoObraOptions = [
-  'No Aplica','Cierre Perimetral', 'Limpieza y Demolición', 'Instalación de Faena', 'Obras Preliminares', 'Movimiento de Tierra', 'Excavaciones', 'Fundaciones', 'Obra Gruesa -20%', 'Obra Gruesa 20% ~ 50%', 'Obra Gruesa +50%', 'Terminaciones -20%', 'Terminaciones 20% ~ 50%', 'Terminaciones +50%', 'Terminada', 'Detenida', 'Post Venta',
+  'No Aplica','Obras Preliminares', 'Fundaciones', 'Obra Gruesa', 'Terminaciones', 'Terminada', 'Detenida',
 ];
 export const tipoConstruccionOptions = [
   "No Aplica", "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas", "Deportiva", "Culto", "Salud"
