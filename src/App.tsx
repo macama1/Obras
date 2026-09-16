@@ -285,8 +285,12 @@ const GlobalStyles = () => (
       text-align: center;
       font-weight: 500;
     }
-    .message[class*="✅"] { background-color: #dcfce7; color: #166534; }
-    .message[class*="❌"] { background-color: #fee2e2; color: #991b1b; }
+    /* FIX: antes se usaba [class*="✅"], que busca el emoji dentro del atributo
+       class del propio <p> (que siempre es "message"), no dentro de su texto.
+       Por eso estos colores nunca se aplicaban. Ahora se usan clases reales
+       .success / .error que se calculan en JS según el contenido del mensaje. */
+    .message.success { background-color: #dcfce7; color: #166534; }
+    .message.error { background-color: #fee2e2; color: #991b1b; }
     .loader { text-align: center; color: var(--color-texto-secundario); padding: 2rem; }
 
     /* --- Responsivo --- */
@@ -381,10 +385,16 @@ const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, pl
 
 
 // --- Estado Inicial para una Nueva Obra ---
+// FIX: las claves ahora coinciden EXACTAMENTE con los encabezados de tu Google Sheet.
+// Antes: 'Observaciones de Compra' (no existe en el Sheet -> por eso "Próximos Pasos"
+// nunca se escribía en la columna L) y 'M²' (no existe -> por eso "Pisos" quedaba vacío).
+// Se quitaron 'Fecha Fin Obra' y 'Comentarios Última Visita' de este estado inicial
+// porque no forman parte del formulario de creación (y 'Fecha Fin Obra' ni siquiera
+// es una columna real del Sheet).
 const initialNewObraState = {
-  'Empresa': '', 'Obra / PDV': '', 'Vendedor': '', 'Canal': '', 'Tipo Construcción': '', 'Región': '', 'Comuna': '', 'Dirección': '', 'Estado de Obra': '', 'Les Vendemos?': '', 'Observaciones de Compra': '', 'Descripción de la obra o PDV': '', 'M²': '', 
+  'Empresa': '', 'Obra / PDV': '', 'Vendedor': '', 'Canal': '', 'Tipo Construcción': '', 'Región': '', 'Comuna': '', 'Dirección': '', 'Estado de Obra': '', 'Les Vendemos?': '', 'Próximos Pasos': '', 'Descripción de la obra o PDV': '', 'Pisos': '', 
   'Contacto': '', 
-  'Comentarios Última Visita': '', 'Rut Empresa': '', 'Monto Presupuesto': '', 'Fecha Fin Obra': ''
+  'Rut Empresa': ''
 };
 
 
@@ -559,6 +569,10 @@ export default function App() {
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('es-CL', { timeZone: 'UTC' });
   };
+
+  // FIX: helper para determinar la clase del mensaje (success/error) en vez de
+  // depender del selector CSS roto [class*="✅"].
+  const messageClass = message.startsWith('✅') ? 'success' : message.startsWith('❌') ? 'error' : '';
   
   return (
     <div className="container">
@@ -694,13 +708,18 @@ export default function App() {
                 
                 {/* CAMPOS BORRADOS: Monto Presupuesto y Fecha Fin */}
                 
-                <div className="form-field"><label>Próximos Pasos</label><textarea name="Observaciones de Compra" value={newObraData['Observaciones de Compra']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
+                {/* FIX: name="Próximos Pasos" (antes "Observaciones de Compra", una
+                    columna que no existe en el Sheet -> por eso nunca se guardaba
+                    en la columna L "Próximos Pasos"). */}
+                <div className="form-field"><label>Próximos Pasos</label><textarea name="Próximos Pasos" value={newObraData['Próximos Pasos']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
               
               <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={newObraData['Tipo Construcción']} onChange={handleNewObraInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
               
                 <div className="form-field field-highlight"><label>*ESTADO DE LA OBRA*</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={newObraData['Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
-                <div className="form-field"><label>N° de Pisos</label><input type="number" name="M²" value={newObraData['M²']} onChange={handleNewObraInputChange} /></div>
+                {/* FIX: name="Pisos" (antes "M²", que no existe como columna -> por
+                    eso "N° de Pisos" nunca se imprimía en el Sheet). */}
+                <div className="form-field"><label>N° de Pisos</label><input type="number" name="Pisos" value={newObraData['Pisos']} onChange={handleNewObraInputChange} /></div>
               <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={newObraData['Descripción de la obra o PDV']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
               
               <div className="form-field">
@@ -744,12 +763,15 @@ export default function App() {
             <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
               <div className="form-field field-highlight"><label>Estado de Obra</label><select name="Estado de Obra" value={obraDetails['Estado de Obra'] || ''} onChange={handleInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
               <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?']} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
-              <div className="form-field"><label>Observaciones de Compra</label><textarea name="Observaciones de Compra" value={obraDetails['Observaciones de Compra'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
+              {/* FIX: name="Próximos Pasos" (antes "Observaciones de Compra", columna
+                  inexistente en el Sheet). Se alineó también el label. */}
+              <div className="form-field"><label>Próximos Pasos</label><textarea name="Próximos Pasos" value={obraDetails['Próximos Pasos'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
               
               {/* CAMPOS BORRADOS: Monto y Fecha Fin */}
             
             <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={obraDetails['Descripción de la obra o PDV'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
-            <div className="form-field"><label>M²</label><input type="number" name="M²" value={obraDetails['M²'] || ''} onChange={handleInputChange} /></div>
+            {/* FIX: name="Pisos" (antes "M²", columna inexistente en el Sheet). */}
+            <div className="form-field"><label>Pisos</label><input type="number" name="Pisos" value={obraDetails['Pisos'] || ''} onChange={handleInputChange} /></div>
            
             <div className="form-field">
               <label>Contacto</label>
@@ -762,7 +784,6 @@ export default function App() {
             </div>
 
             <div className="form-field"><label>Acciones Última Reunion</label><textarea value={obraDetails['Acciones Última Reunion'] || ''} rows={2} disabled></textarea></div>
-            <div className="form-field"><label>Comentarios Última Visita</label><textarea name="Comentarios Última Visita" value={obraDetails['Comentarios Última Visita'] || ''} onChange={handleInputChange} rows={4}></textarea></div>
             <div className="form-field"><label>Rut Empresa</label><textarea name="Rut Empresa" value={obraDetails['Rut Empresa'] || ''} onChange={handleInputChange} rows={1}></textarea></div>
             <div className="form-field"><label>Última Actualización</label><input type="text" value={formatDate(obraDetails['Última Actualización'])} disabled /></div>
           
@@ -776,7 +797,7 @@ export default function App() {
         </div>
       )}
       
-      {message && <p className="message">{message}</p>}
+      {message && <p className={`message ${messageClass}`}>{message}</p>}
     </div>
   );
 }
