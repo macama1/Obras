@@ -12,7 +12,21 @@ const COL_VENDEDOR = 4; // Columna D
 const COL_REGION = 7; // Columna G
 const COL_ULTIMA_ACTUALIZACION = 11; // Columna K (Ajusta si cambió)
 
+// Columnas que nunca se pueden sobrescribir desde la app.
+const COLUMNAS_PROTEGIDAS = ['ID', 'Orden'];
+
 // =============================================
+
+// Compara regiones sin tildes ni mayúsculas y acepta nombre corto/largo
+// ("Aysén" == "Aysén del General Carlos Ibáñez del Campo").
+function normalizarTexto(texto) {
+  return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+}
+function mismaRegion(a, b) {
+  const x = normalizarTexto(a), y = normalizarTexto(b);
+  if (!x || !y) return false;
+  return x === y || x.startsWith(y + ' ') || y.startsWith(x + ' ');
+}
 
 function doPost(e) {
   try {
@@ -82,7 +96,7 @@ function getDataByRegion(region) {
     throw new Error("No se encontró la columna 'Región' en la hoja Consolidado.");
   }
 
-  const datosFiltrados = datos.filter(fila => fila[colRegionIndex] === region);
+  const datosFiltrados = datos.filter(fila => mismaRegion(fila[colRegionIndex], region));
 
   const datosFormateados = datosFiltrados.map(fila => {
     let objetoFila = {};
@@ -98,7 +112,18 @@ function getDataByRegion(region) {
 // --- FUNCIÓN editObra ---
 function editObra(id, updates) {
   if (!id) throw new Error("No se proporcionó un ID para editar.");
-  
+
+  // Evita que dos vendedores guardando a la vez se pisen la fila o el registro.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    return editObraSinLock_(id, updates || {});
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function editObraSinLock_(id, updates) {
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
   const datos = hoja.getDataRange().getValues();
   const encabezados = datos[0];
@@ -111,6 +136,7 @@ function editObra(id, updates) {
 
   // Actualizar la hoja "Consolidado"
   for (const key in updates) {
+    if (COLUMNAS_PROTEGIDAS.indexOf(key) !== -1) continue;
     const colIndex = encabezados.indexOf(key);
     if (colIndex !== -1) {
       hoja.getRange(filaNumeroReal, colIndex + 1).setValue(updates[key]);
@@ -159,8 +185,23 @@ function editObra(id, updates) {
 
 // --- FUNCIÓN createNewObra ---
 function createNewObra(data) {
+  // Sin lock, dos altas simultáneas leen el mismo máximo y generan el mismo ID.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    return createNewObraSinLock_(data || {});
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function createNewObraSinLock_(data) {
+  const obligatorios = ['Empresa', 'Obra / PDV', 'Vendedor', 'Canal', 'Comuna'];
+  const faltantes = obligatorios.filter(c => !String(data[c] || '').trim());
+  if (faltantes.length) throw new Error('Faltan campos obligatorios: ' + faltantes.join(', '));
+
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
-  const todosLosIds = hoja.getRange(2, COL_ID, hoja.getLastRow(), 1).getValues().flat();
+  const todosLosIds = hoja.getRange(2, COL_ID, Math.max(hoja.getLastRow() - 1, 1), 1).getValues().flat();
   
   let maxNumero = 0;
   todosLosIds.forEach(id => {
@@ -199,6 +240,7 @@ function createNewObra(data) {
   });
   
   hoja.appendRow(nuevaFila);
+  SpreadsheetApp.flush();
 
   const nuevaFilaObjeto = {};
   encabezados.forEach((encabezado, i) => {

@@ -310,10 +310,10 @@ export const canalOptions = [
   'Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande', 'Ferretería', 'Distribuidor', 'Especialista', 'Distribuidor Grandes Supericies', 'Instalador', 'Particular', 'Industrial',
 ];
 export const vendedorOptions = [
-  "Andres Pacheco", "Eduardo Arias", "Jorge Nario", "Lissett Santana", "Loreto Medina", "Manuel Urzúa", "Mauricio Carvajal", "Mónica Valencia", "Vendedor General CA", "Vendedor General Peg&Mort (RH)"
+  "Andres Pacheco", "Cristian Maldonado", "Eduardo Arias", "Jorge Nario", "Lissett Santana", "Loreto Medina", "Manuel Urzúa", "Mauricio Carvajal", "Mónica Valencia", "Vendedor General CA", "Vendedor General Peg&Mort (RH)"
 ];
 export const estadoObraOptions = [
-  'No Aplica','Obras Preliminares', 'Fundaciones', 'Obra Gruesa', 'Terminaciones', 'Terminada', 'Detenida',
+  'No Aplica', 'Sin Información', 'No Iniciada', 'Obras Preliminares', 'Fundaciones', 'Obra Gruesa', 'Terminaciones', 'Terminada', 'Detenida',
 ];
 export const tipoConstruccionOptions = [
   "No Aplica", "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas", "Deportiva", "Culto", "Salud"
@@ -334,10 +334,24 @@ export const regionesYComunas = [
     { region: 'La Araucanía', comunas: ['Temuco', 'Carahue', 'Cunco', 'Curarrehue', 'Freire', 'Galvarino', 'Gorbea', 'Loncoche', 'Melipeuco', 'Nueva Imperial', 'Padre las Casas', 'Perquenco', 'Pitrufquén', 'Pucón', 'Saavedra', 'Teodoro Schmidt', 'Toltén', 'Vilcún', 'Villarrica', 'Cholchol', 'Angol', 'Collipulli', 'Curacautín', 'Ercilla', 'Lonquimay', 'Los Sauces', 'Lumaco', 'Purén', 'Renaico', 'Traiguén', 'Victoria']},
     { region: 'Los Ríos', comunas: ['Valdivia', 'Corral', 'Lanco', 'Los Lagos', 'Máfil', 'Mariquina', 'Paillaco', 'Panguipulli', 'La Unión', 'Futrono', 'Lago Ranco', 'Río Bueno']},
     { region: 'Los Lagos', comunas: ['Puerto Montt', 'Calbuco', 'Cochamó', 'Fresia', 'Frutillar', 'Los Muermos', 'Llanquihue', 'Maullín', 'Puerto Varas', 'Castro', 'Ancud', 'Chonchi', 'Curaco de Vélez', 'Dalcahue', 'Puqueldón', 'Queilén', 'Quellón', 'Quemchi', 'Quinchao', 'Osorno', 'Puerto Octay', 'Purranque', 'Puyehue', 'Río Negro', 'San Juan de la Costa', 'San Pablo', 'Chaitén', 'Futaleufú', 'Hualaihué', 'Palena']},
-    { region: 'Aysén del General Carlos Ibáñez del Campo', comunas: ['Coyhaique', 'Lago Verde', 'Aysén', 'Cisnes', 'Guaitecas', 'Cochrane', "O'Higgins", 'Tortel', 'Chile Chico', 'Río Ibáñez']},
+    // FIX: el Sheet guarda esta región como "Aysén"; con el nombre largo la búsqueda
+    // por región volvía vacía y sus obras no aparecían en la app.
+    { region: 'Aysén', comunas: ['Coyhaique', 'Lago Verde', 'Aysén', 'Cisnes', 'Guaitecas', 'Cochrane', "O'Higgins", 'Tortel', 'Chile Chico', 'Río Ibáñez']},
     { region: 'Magallanes y de la Antártica Chilena', comunas: ['Punta Arenas', 'Laguna Blanca', 'Río Verde', 'San Gregorio', 'Cabo de Hornos (Ex Navarino)', 'Antártica', 'Porvenir', 'Primavera', 'Timaukel', 'Natales', 'Torres del Paine']},
 ];
 
+
+// Devuelve las opciones de un selector incluyendo el valor actual de la fila aunque
+// no esté en la lista. Sin esto, un valor del Sheet que no calza (p. ej. "No Iniciada"
+// o un Tipo Construcción importado) se mostraba como selector vacío.
+const withCurrent = (options: string[], current: unknown): string[] => {
+  const value = current == null ? '' : String(current).trim();
+  return value && !options.includes(value) ? [value, ...options] : options;
+};
+
+// Campos que deben venir llenos para crear un PdV (antes se podía guardar sin Canal,
+// y hoy hay 805 registros con Canal vacío).
+const requiredNewObraFields = ['Empresa', 'Obra / PDV', 'Vendedor', 'Canal', 'Comuna'];
 
 const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLdKl0sfkjUbVJWPM6HLG98Cu3G4wfYhgSmEk_pUTPWHhMXgw/exec"; 
 
@@ -542,6 +556,11 @@ export default function App() {
   };
   
   const handleCreateObra = async () => {
+    const missing = requiredNewObraFields.filter(f => !String(newObraData[f] ?? '').trim());
+    if (missing.length > 0) {
+      setMessage(`❌ Completa: ${missing.join(', ')}.`);
+      return;
+    }
     setLoading(true);
     setMessage('');
     try {
@@ -675,7 +694,7 @@ export default function App() {
             <h2>Agregar Nuevo PdV en {selectedRegion}</h2>
             <div className="form-grid-details">
               <div className="form-field">
-                <label>Empresa</label>
+                <label>Empresa *</label>
                   <AutocompleteInput 
                     value={newCompanyInput}
                     onChange={(e) => {
@@ -695,13 +714,13 @@ export default function App() {
                   />
               </div>
               <div className="form-field"><label>Rut Empresa</label><input type="text" name="Rut Empresa" value={newObraData['Rut Empresa']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field field-highlight"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field"><label>Vendedor</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
-                <div className="form-field"><label>Canal</label><select name="Canal" value={newObraData['Canal']} onChange={handleNewObraInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                <div className="form-field field-highlight"><label>Obra / PDV *</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
+                <div className="form-field"><label>Vendedor *</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
+                <div className="form-field"><label>Canal *</label><select name="Canal" value={newObraData['Canal']} onChange={handleNewObraInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
               
               <div className="form-field"><label>Región</label><input type="text" value={newObraData['Región']} disabled /></div>
               <div className="form-field">
-                  <label>Comuna</label>
+                  <label>Comuna *</label>
                   <AutocompleteInput value={comunaInput} onChange={(e) => { setComunaInput(e.target.value); setNewObraData(prev => ({...prev, 'Comuna': e.target.value})); }} onSuggestionClick={(comuna) => { setComunaInput(comuna); setNewObraData(prev => ({...prev, 'Comuna': comuna})); setComunaSuggestions([]); }} suggestions={comunaSuggestions} placeholder="Busque una comuna..." disabled={false} />
                 </div>
                 <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
@@ -760,9 +779,9 @@ export default function App() {
               <div className="form-field"><label>Comuna</label><input type="text" value={obraDetails['Comuna'] || ''} disabled /></div>
               <div className="form-field"><label>*DIRECCIÓN*</label><input type="text" name="Dirección" value={obraDetails['Dirección'] || ''} onChange={handleInputChange} /></div>
             
-            <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
-              <div className="form-field field-highlight"><label>Estado de Obra</label><select name="Estado de Obra" value={obraDetails['Estado de Obra'] || ''} onChange={handleInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
-              <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?']} onChange={handleInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+            <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{withCurrent(tipoConstruccionOptions, obraDetails['Tipo Construcción']).map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
+              <div className="form-field field-highlight"><label>Estado de Obra</label><select name="Estado de Obra" value={obraDetails['Estado de Obra'] || ''} onChange={handleInputChange}><option value="">-- Cambiar Estado --</option>{withCurrent(estadoObraOptions, obraDetails['Estado de Obra']).map(e => <option key={e} value={e}>{e}</option>)}</select></div>
+              <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?'] || ''} onChange={handleInputChange}><option value="">-- Seleccione --</option>{withCurrent(lesVendemosOptions, obraDetails['Les Vendemos?']).map(o => <option key={o} value={o}>{o}</option>)}</select></div>
               {/* FIX: name="Próximos Pasos" (antes "Observaciones de Compra", columna
                   inexistente en el Sheet). Se alineó también el label. */}
               <div className="form-field"><label>Próximos Pasos</label><textarea name="Próximos Pasos" value={obraDetails['Próximos Pasos'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
