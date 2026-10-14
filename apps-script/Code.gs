@@ -34,7 +34,11 @@ function doPost(e) {
     let result = {};
 
     switch (payload.action) {
-      case 'getDataByRegion':
+      case 'getAllData':
+        result = getAllData();
+        break;
+      case 'getDataByRegion': // se mantiene para versiones antiguas de la app
+
         result = getDataByRegion(payload.region);
         break;
       case 'getClientList':
@@ -83,6 +87,26 @@ function getClientList() {
   })).filter(c => c.empresa);
   
   return clients;
+}
+
+// --- FUNCIÓN getAllData ---
+// Devuelve todas las obras de una vez. Leer la hoja cuesta lo mismo que antes
+// (getDataByRegion también la leía completa) y la app filtra localmente.
+function getAllData() {
+  const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
+  const datos = hoja.getDataRange().getValues();
+  const encabezados = datos.shift();
+  return datos
+    .filter(fila => fila[COL_ID - 1] !== '' && fila[COL_ID - 1] !== null)
+    .map(fila => filaAObjeto_(encabezados, fila));
+}
+
+function filaAObjeto_(encabezados, fila) {
+  const objeto = {};
+  encabezados.forEach((encabezado, i) => {
+    if (encabezado !== '') objeto[encabezado] = fila[i];
+  });
+  return objeto;
 }
 
 // --- FUNCIÓN getDataByRegion ---
@@ -180,7 +204,9 @@ function editObraSinLock_(id, updates) {
     Logger.log("No se pudo escribir en el registro de visitas. " + e.toString());
   }
 
-  return { message: "Actualización exitosa" };
+  // Devuelve la fila ya guardada para que la app la actualice sin recargar todo.
+  const filaFinal = hoja.getRange(filaNumeroReal, 1, 1, encabezados.length).getValues()[0];
+  return { message: "Actualización exitosa", row: filaAObjeto_(encabezados, filaFinal) };
 }
 
 // --- FUNCIÓN createNewObra ---
@@ -196,7 +222,7 @@ function createNewObra(data) {
 }
 
 function createNewObraSinLock_(data) {
-  const obligatorios = ['Empresa', 'Obra / PDV', 'Vendedor', 'Canal', 'Comuna'];
+  const obligatorios = ['Empresa', 'Obra / PDV', 'Vendedor', 'Canal', 'Región', 'Comuna'];
   const faltantes = obligatorios.filter(c => !String(data[c] || '').trim());
   if (faltantes.length) throw new Error('Faltan campos obligatorios: ' + faltantes.join(', '));
 
