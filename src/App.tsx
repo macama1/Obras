@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase';
+import { postApi, mensajeServidor } from './api';
+import Login from './Login';
 
 // --- COMPONENTE DE ESTILOS GLOBALES (DISEÑO MEJORADO + HERO + LOGO) ---
 const GlobalStyles = () => (
@@ -361,11 +365,13 @@ const mismaRegion = (a: unknown, b: unknown) => {
   return !!x && !!y && (x === y || x.startsWith(y + ' ') || y.startsWith(x + ' '));
 };
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwFurWMyjoIhRfFQmPIVYLdKl0sfkjUbVJWPM6HLG98Cu3G4wfYhgSmEk_pUTPWHhMXgw/exec"; 
+
 
 // --- Interfaces ---
 interface ObraDetails { [key: string]: any; }
 interface ClientInfo { empresa: string; rut: string; }
+// Quién está usando la app, según la hoja Usuarios del radar.
+interface Usuario { vendedor: string; rol: 'vendedor' | 'jefatura'; correo: string; }
 
 // --- Componente de Autocompletado ---
 const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, placeholder, disabled }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onSuggestionClick: (suggestion: string) => void; suggestions: string[]; placeholder: string; disabled: boolean; }) => {
@@ -420,7 +426,10 @@ const initialNewObraState = {
 };
 
 
-export default function App() {
+function Radar({ usuario }: { usuario: Usuario }) {
+  const esJefatura = usuario.rol === 'jefatura';
+  // Un vendedor solo crea obras a su nombre (el servidor también lo obliga).
+  const obraVacia = (region = ''): ObraDetails => ({ ...initialNewObraState, 'Región': region, 'Vendedor': esJefatura ? '' : usuario.vendedor });
   // --- Estados ---
   // Región ahora es un filtro opcional ('' = todas), no un paso obligatorio.
   const [regionFilter, setRegionFilter] = useState('');
@@ -438,7 +447,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isCreateMode, setIsCreateMode] = useState(false);
-  const [newObraData, setNewObraData] = useState<ObraDetails>(initialNewObraState);
+  const [newObraData, setNewObraData] = useState<ObraDetails>(() => obraVacia());
   const [newCompanyInput, setNewCompanyInput] = useState('');
   const [newCompanySuggestions, setNewCompanySuggestions] = useState<ClientInfo[]>([]);
 
@@ -446,10 +455,9 @@ export default function App() {
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getClientList' }) });
-        const data = await response.json();
+        const data = await postApi<ClientInfo[]>({ action: 'getClientList' });
         if (data.status === 'success') {
-          setClientList(data.data);
+          setClientList(data.data || []);
         }
       } catch (error) {
         console.error('No se pudo cargar la lista de clientes.');
@@ -466,11 +474,10 @@ export default function App() {
       setLoading(true);
       setMessage('');
       try {
-        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllData' }) });
-        const data = await response.json();
+        const data = await postApi<ObraDetails[]>({ action: 'getAllData' });
         if (data.status === 'success') {
-          setAllData(data.data);
-        } else { throw new Error(data.message || 'Error del servidor'); }
+          setAllData(data.data || []);
+        } else { throw new Error(mensajeServidor(data.message)); }
       } catch (error) {
         setMessage('❌ No se pudieron cargar las obras. Revisa tu conexión y recarga la página.');
         setAllData([]);
@@ -540,8 +547,7 @@ export default function App() {
     setLoading(true);
     setMessage('');
     try {
-      const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'editObra', id: selectedObraId, updates }) });
-      const data = await response.json();
+      const data = await postApi<{ row?: ObraDetails }>({ action: 'editObra', id: selectedObraId, updates });
       if (data.status === 'success') {
         setMessage(Object.keys(updates).length > 0 ? '✅ Cambios guardados.' : '✅ Visita registrada.');
         // En vez de recargar todas las obras, se actualiza solo la fila editada
@@ -552,9 +558,9 @@ export default function App() {
         } else {
           setAllData(prev => prev.map(item => item.ID === selectedObraId ? { ...item, ...updates } : item));
         }
-      } else { throw new Error(data.message || 'Error del servidor'); }
+      } else { throw new Error(mensajeServidor(data.message)); }
     } catch (error) {
-      setMessage(`❌ Error: ${error instanceof Error ? error.message : 'Desconocido'}`);
+      setMessage(`❌ ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
     setLoading(false);
   };
@@ -577,16 +583,16 @@ export default function App() {
     setLoading(true);
     setMessage('');
     try {
-      const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'createNewObra', data: newObraData }) });
-      const result = await response.json();
-      if (result.status === 'success') {
-        setMessage('✅ Nueva obra creada con éxito.');
-        setAllData(prevData => [...prevData, result.data]);
+      const result = await postApi<ObraDetails>({ action: 'createNewObra', data: newObraData });
+      if (result.status === 'success' && result.data) {
+        const creada = result.data;
+        setMessage(`✅ Obra creada: ${creada.ID}.`);
+        setAllData(prevData => [...prevData, creada]);
         setIsCreateMode(false);
-        setNewObraData(initialNewObraState);
-      } else { throw new Error(result.message || 'Error del servidor'); }
+        setNewObraData(obraVacia());
+      } else { throw new Error(mensajeServidor(result.message)); }
     } catch (error) {
-      setMessage(`❌ Error al crear la obra: ${error instanceof Error ? error.message : 'Desconocido'}`);
+      setMessage(`❌ ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
     setLoading(false);
   };
@@ -607,20 +613,7 @@ export default function App() {
   const messageClass = message.startsWith('✅') ? 'success' : message.startsWith('❌') ? 'error' : '';
   
   return (
-    <div className="container">
-      <GlobalStyles />
-      
-      {/* --- LOGO DE LA EMPRESA --- */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', marginTop: '2rem' }}>
-        <img 
-          src="/logo-natstone.png" 
-          alt="NatStone Logo" 
-          style={{ maxWidth: '250px', height: 'auto' }} 
-        />
-      </div>
-      
-      <h1>RADAR COMERCIAL</h1>
-      
+    <>
       {!isCreateMode ? (
         <>
           {/* BUSCADOR: empresa directo, región como filtro opcional */}
@@ -651,7 +644,7 @@ export default function App() {
               </div>
               {!selectedObraId && (
                 <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
-                  <button onClick={() => { setIsCreateMode(true); setComunaInput(''); setNewCompanyInput(''); setNewObraData({ ...initialNewObraState, 'Región': regionFilter }); }} className="secondary-button" disabled={loading}>Agregar Nuevo Punto de Venta</button>
+                  <button onClick={() => { setIsCreateMode(true); setComunaInput(''); setNewCompanyInput(''); setNewObraData(obraVacia(regionFilter)); }} className="secondary-button" disabled={loading}>Agregar Nuevo Punto de Venta</button>
                 </div>
               )}
           </div>
@@ -683,7 +676,9 @@ export default function App() {
               </div>
               <div className="form-field"><label>Rut Empresa</label><input type="text" name="Rut Empresa" value={newObraData['Rut Empresa']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field field-highlight"><label>Obra / PDV *</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field"><label>Vendedor *</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
+                {esJefatura
+                  ? <div className="form-field"><label>Vendedor *</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
+                  : <div className="form-field"><label>Vendedor</label><input type="text" value={usuario.vendedor} disabled /></div>}
                 <div className="form-field"><label>Canal *</label><select name="Canal" value={newObraData['Canal']} onChange={handleNewObraInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
               
               <div className="form-field"><label>Región *</label><select name="Región" value={newObraData['Región']} onChange={(e) => { const region = e.target.value; setNewObraData(prev => ({ ...prev, 'Región': region, 'Comuna': '' })); setComunaInput(''); }}><option value="">-- Elija una región --</option>{regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}</select></div>
@@ -784,6 +779,56 @@ export default function App() {
       )}
       
       {message && <p className={`message ${messageClass}`}>{message}</p>}
+    </>
+  );
+}
+
+// --- Sesión: login con la cuenta de la intranet y datos del usuario en el radar ---
+export default function App() {
+  const [estado, setEstado] = useState<'cargando' | 'fuera' | 'dentro'>('cargando');
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [aviso, setAviso] = useState('');
+
+  useEffect(() => onAuthStateChanged(auth, async (user) => {
+    if (!user) { setUsuario(null); setEstado('fuera'); return; }
+    setEstado('cargando');
+    try {
+      const r = await postApi<Usuario>({ action: 'whoami' });
+      if (r.status === 'success' && r.data && r.data.vendedor) {
+        setAviso('');
+        setUsuario(r.data);
+        setEstado('dentro');
+      } else {
+        setAviso(r.status === 'success'
+          ? 'Tu cuenta aún no está habilitada en el radar. Pide a jefatura que te agregue.'
+          : mensajeServidor(r.message));
+        await signOut(auth);
+      }
+    } catch {
+      setAviso('No se pudo conectar con el radar. Revisa tu conexión.');
+      await signOut(auth);
+    }
+  }), []);
+
+  return (
+    <div className="container">
+      <GlobalStyles />
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', marginTop: '2rem' }}>
+        <img src="/logo-natstone.png" alt="NatStone Logo" style={{ maxWidth: '250px', height: 'auto' }} />
+      </div>
+      <h1>RADAR COMERCIAL</h1>
+
+      {estado === 'cargando' && <div className="loader">Cargando...</div>}
+      {estado === 'fuera' && <Login aviso={aviso} />}
+      {estado === 'dentro' && usuario && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem', marginBottom: '1rem', fontSize: '0.9rem' }}>
+            <span>{usuario.vendedor}{usuario.rol === 'jefatura' ? ' · Jefatura' : ''}</span>
+            <button className="secondary-button" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => signOut(auth)}>Cerrar sesión</button>
+          </div>
+          <Radar key={usuario.correo} usuario={usuario} />
+        </>
+      )}
     </div>
   );
 }
