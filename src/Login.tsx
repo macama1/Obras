@@ -22,7 +22,7 @@ export default function Login({ aviso }: { aviso?: string }) {
 
   const recuperar = async () => {
     setError(''); setInfo('');
-    if (!email.trim()) { setError('Escribe tu correo para enviarte el enlace.'); return; }
+    if (!email.trim()) { setError('Escribe tu correo y te enviamos un enlace para cambiar la contraseña.'); return; }
     try {
       await sendPasswordResetEmail(auth, email.trim());
       setInfo('Te enviamos un correo para cambiar tu contraseña.');
@@ -32,24 +32,23 @@ export default function Login({ aviso }: { aviso?: string }) {
   };
 
   return (
-    <div className="welcome-wrapper">
-      <form className="welcome-card" onSubmit={entrar}>
-        <h1 className="welcome-title">Iniciar sesión</h1>
-        <p className="welcome-subtitle">Usa el mismo correo y contraseña de la intranet.</p>
-        {aviso && <p className="message error" style={{ marginTop: 0, marginBottom: '1rem' }}>{aviso}</p>}
-        <div className="form-field" style={{ textAlign: 'left', marginBottom: '1rem' }}>
-          <label htmlFor="correo">Correo</label>
-          <input id="correo" type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required />
-        </div>
-        <div className="form-field" style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
-          <label htmlFor="clave">Contraseña</label>
-          <input id="clave" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
-        </div>
-        <button type="submit" disabled={enviando} style={{ width: '100%' }}>{enviando ? 'Entrando...' : 'Entrar'}</button>
-        <button type="button" className="secondary-button" onClick={recuperar} style={{ width: '100%', marginTop: '0.75rem' }}>Olvidé mi contraseña</button>
-        {error && <p className="message error">{error}</p>}
-        {info && <p className="message success">{info}</p>}
+    <main className="login">
+      <img src="/logo-natstone.png" alt="Natstone" />
+      <h1 className="rc-title">Radar Comercial</h1>
+      <p className="rc-sub">Entra con el mismo correo y contraseña de la intranet.</p>
+      {aviso && <p className="notice">{aviso}</p>}
+      <form className="sheet" onSubmit={entrar}>
+        <label className="field"><span>Correo</span>
+          <input className="input" type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required /></label>
+        <label className="field"><span>Contraseña</span>
+          <input className="input" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required /></label>
+        <button type="submit" className="btn btn-primary btn-block" disabled={enviando}>{enviando ? 'Entrando…' : 'Entrar'}</button>
+        <p style={{ textAlign: 'center', margin: '12px 0 4px' }}>
+          <button type="button" className="btn-link" onClick={recuperar}>Olvidé mi contraseña</button>
+        </p>
+        {error && <p className="notice" style={{ marginTop: 10 }}>{error}</p>}
+        {info && <p className="auto-note">{info}</p>}
       </form>
-    </div>
+    </main>
   );
 }

@@ -1,792 +1,589 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { postApi, mensajeServidor } from './api';
 import Login from './Login';
+import {
+  canalOptions, vendedorOptions, tipoConstruccionOptions, normalizar, todasLasComunas, regionDeComuna,
+  etapasObra, etapasCortas, estadosEspeciales, esCanalDeObra,
+} from './datos';
+import './radar.css';
 
-// --- COMPONENTE DE ESTILOS GLOBALES (DISEÑO MEJORADO + HERO + LOGO) ---
-const GlobalStyles = () => (
-  <style>{`
-    /* --- Variables y Reset --- */
-    :root {
-      --color-primario: #1a1a1a;        /* Negro Natstone */
-      --color-secundario: #F97316;      /* Naranja Natstone */
-      --color-fondo: #f8fafc;           /* Gris azulado pálido */
-      --color-tarjeta: #ffffff;
-      --color-borde: #e2e8f0;
-      --color-texto: #334155;
-      --color-texto-secundario: #64748b;
-      --radio-borde: 12px;
-      --sombra-suave: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-      --sombra-focus: 0 0 0 4px rgba(249, 115, 22, 0.15);
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: var(--color-fondo);
-      color: var(--color-texto);
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* --- Títulos --- */
-    h1 {
-      text-align: center;
-      font-size: 1.75rem;
-      font-weight: 800;
-      letter-spacing: -0.025em;
-      color: var(--color-primario);
-      margin: 1rem 0 2rem 0;
-      text-transform: uppercase;
-    }
-
-    h2 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--color-primario);
-      margin-bottom: 1.5rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid var(--color-borde);
-    }
-
-    /* --- Layout --- */
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 0 1.5rem 4rem 1.5rem;
-    }
-
-    .card {
-      background-color: var(--color-tarjeta);
-      border-radius: var(--radio-borde);
-      box-shadow: var(--sombra-suave);
-      border: 1px solid var(--color-borde);
-      padding: 2.5rem;
-      margin-bottom: 2rem;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    .card.details {
-      border-top: 5px solid var(--color-secundario);
-    }
-
-    /* --- Estilos para la Pantalla de Bienvenida (Hero) --- */
-    .welcome-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 50vh;
-      text-align: center;
-    }
-
-    .welcome-card {
-      background: white;
-      padding: 3rem;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-      max-width: 480px;
-      width: 100%;
-      border: 1px solid var(--color-borde);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .welcome-card::before {
-      content: "";
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 6px;
-      background: linear-gradient(90deg, var(--color-secundario), #fb923c);
-    }
-
-    .hero-icon {
-      background-color: #fff7ed;
-      color: var(--color-secundario);
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 1.5rem auto;
-    }
-
-    .welcome-title {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: var(--color-primario);
-      margin-bottom: 0.5rem;
-    }
-
-    .welcome-subtitle {
-      color: var(--color-texto-secundario);
-      font-size: 0.95rem;
-      margin-bottom: 2rem;
-    }
-
-    /* --- Grillas --- */
-    .form-grid, .form-grid-details {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.5rem;
-    }
-
-    .form-field {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .form-field.full-width {
-      grid-column: 1 / -1;
-    }
-
-    /* --- Labels e Inputs --- */
-    label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--color-texto-secundario);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    input, select, textarea {
-      width: 100%;
-      padding: 0.875rem 1rem;
-      font-size: 0.95rem;
-      color: var(--color-primario);
-      background-color: #fff;
-      border: 1px solid var(--color-borde);
-      border-radius: 8px;
-      transition: all 0.2s ease-in-out;
-      appearance: none;
-    }
-
-    select {
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-      background-position: right 0.75rem center;
-      background-repeat: no-repeat;
-      background-size: 1.5em 1.5em;
-      padding-right: 2.5rem;
-    }
-
-    textarea {
-      min-height: 100px;
-      resize: vertical;
-      line-height: 1.5;
-    }
-
-    input:focus, select:focus, textarea:focus {
-      outline: none;
-      border-color: var(--color-secundario);
-      box-shadow: var(--sombra-focus);
-    }
-
-    input:disabled, select:disabled {
-      background-color: #f1f5f9;
-      color: #94a3b8;
-      cursor: not-allowed;
-    }
-
-    /* --- Autocomplete --- */
-    .autocomplete-container { position: relative; }
-    
-    .suggestions-list {
-      position: absolute;
-      top: calc(100% + 4px);
-      left: 0; right: 0;
-      background: #fff;
-      border: 1px solid var(--color-borde);
-      border-radius: 8px;
-      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-      z-index: 50;
-      max-height: 250px;
-      overflow-y: auto;
-      overflow-x: hidden;
-    }
-
-    .suggestions-list li {
-      padding: 0.75rem 1rem;
-      cursor: pointer;
-      font-size: 0.95rem;
-      border-bottom: 1px solid #f1f5f9;
-    }
-
-    .suggestions-list li:hover {
-      background-color: #fff7ed;
-      color: var(--color-secundario);
-    }
-
-    /* --- Botones --- */
-    .actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 1rem;
-      margin-top: 2.5rem;
-      padding-top: 1.5rem;
-      border-top: 1px dashed var(--color-borde);
-    }
-
-    button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.875rem 1.75rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      transition: all 0.2s;
-      background-color: var(--color-secundario);
-      color: white;
-      box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);
-    }
-
-    button:hover {
-      background-color: #ea580c;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 6px rgba(249, 115, 22, 0.3);
-    }
-
-    button:active { transform: translateY(0); }
-
-    button.secondary-button {
-      background-color: white;
-      color: var(--color-primario);
-      border: 1px solid #cbd5e1;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    }
-
-    button.secondary-button:hover {
-      background-color: #f8fafc;
-      border-color: #94a3b8;
-      color: black;
-    }
-    
-    button:disabled {
-      opacity: 0.7;
-      cursor: wait;
-    }
-
-    /* --- Destacados y Mensajes --- */
-    .field-highlight input, .field-highlight select {
-      border-color: var(--color-secundario);
-      background-color: #fff7ed;
-    }
-    
-    .field-highlight label {
-      color: var(--color-secundario);
-    }
-
-    .message {
-      padding: 1rem;
-      border-radius: 8px;
-      margin-top: 1.5rem;
-      text-align: center;
-      font-weight: 500;
-    }
-    /* FIX: antes se usaba [class*="✅"], que busca el emoji dentro del atributo
-       class del propio <p> (que siempre es "message"), no dentro de su texto.
-       Por eso estos colores nunca se aplicaban. Ahora se usan clases reales
-       .success / .error que se calculan en JS según el contenido del mensaje. */
-    .message.success { background-color: #dcfce7; color: #166534; }
-    .message.error { background-color: #fee2e2; color: #991b1b; }
-    .loader { text-align: center; color: var(--color-texto-secundario); padding: 2rem; }
-
-    /* --- Responsivo --- */
-    @media (max-width: 768px) {
-      .form-grid, .form-grid-details { grid-template-columns: 1fr; }
-      .card { padding: 1.5rem; }
-      .actions { flex-direction: column-reverse; }
-      button { width: 100%; }
-    }
-  `}</style>
-);
-// --- FIN DEL COMPONENTE DE ESTILOS ---
-
-
-// --- Base de Datos Local ---
-export const canalOptions = [
-  'Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande', 'Ferretería', 'Distribuidor', 'Especialista', 'Distribuidor Grandes Supericies', 'Instalador', 'Particular', 'Industrial',
-];
-export const vendedorOptions = [
-  "Andres Pacheco", "Cristian Maldonado", "Eduardo Arias", "Jorge Nario", "Lissett Santana", "Loreto Medina", "Manuel Urzúa", "Mauricio Carvajal", "Mónica Valencia", "Vendedor General CA", "Vendedor General Peg&Mort (RH)"
-];
-export const estadoObraOptions = [
-  'No Aplica', 'Sin Información', 'No Iniciada', 'Obras Preliminares', 'Fundaciones', 'Obra Gruesa', 'Terminaciones', 'Terminada', 'Detenida',
-];
-export const tipoConstruccionOptions = [
-  "No Aplica", "Residencial", "Edificio Departamentos", "Industrial", "Comercial", "Obras Menores", "Educacional", "Casas", "Deportiva", "Culto", "Salud"
-];
-export const lesVendemosOptions = ['Sí', 'No'];
-export const regionesYComunas = [
-    { region: 'Arica y Parinacota', comunas: ['Arica', 'Camarones', 'Putre', 'General Lagos']},
-    { region: 'Tarapacá', comunas: ['Iquique', 'Alto Hospicio', 'Pozo Almonte', 'Camiña', 'Colchane', 'Huara', 'Pica']},
-    { region: 'Antofagasta', comunas: ['Antofagasta', 'Mejillones', 'Sierra Gorda', 'Taltal', 'Calama', 'Ollagüe', 'San Pedro de Atacama', 'Tocopilla', 'María Elena']},
-    { region: 'Atacama', comunas: ['Copiapó', 'Caldera', 'Tierra Amarilla', 'Chañaral', 'Diego de Almagro', 'Vallenar', 'Alto del Carmen', 'Freirina', 'Huasco']},
-    { region: 'Coquimbo', comunas: ['La Serena', 'Coquimbo', 'Andacollo', 'La Higuera', 'Paiguano', 'Vicuña', 'Illapel', 'Canela', 'Los Vilos', 'Salamanca', 'Ovalle', 'Combarbalá', 'Monte Patria', 'Punitaqui', 'Río Hurtado']},
-    { region: 'Valparaíso', comunas: ['Valparaíso', 'Casablanca', 'Concón', 'Juan Fernández', 'Puchuncaví', 'Quintero', 'Viña del Mar', 'Isla de Pascua', 'Los Andes', 'Calle Larga', 'Rinconada', 'San Esteban', 'La Ligua', 'Cabildo', 'Papudo', 'Petorca', 'Zapallar', 'Quillota', 'Calera', 'Hijuelas', 'La Cruz', 'Nogales', 'San Antonio', 'Algarrobo', 'Cartagena', 'El Quisco', 'El Tabo', 'Santo Domingo', 'San Felipe', 'Catemu', 'Llaillay', 'Panquehue', 'Putaendo', 'Santa María', 'Quilpué', 'Limache', 'Olmué', 'Villa Alemana']},
-    { region: 'Metropolitana de Santiago', comunas: ['Cerrillos', 'Cerro Navia', 'Conchalí', 'El Bosque', 'Estación Central', 'Huechuraba', 'Independencia', 'La Cisterna', 'La Florida', 'La Granja', 'La Pintana', 'La Reina', 'Las Condes', 'Lo Barnechea', 'Lo Espejo', 'Lo Prado', 'Macul', 'Maipú', 'Ñuñoa', 'Pedro Aguirre Cerda', 'Peñalolén', 'Providencia', 'Pudahuel', 'Quilicura', 'Quinta Normal', 'Recoleta', 'Renca', 'San Joaquín', 'San Miguel', 'San Ramón', 'Santiago', 'Vitacura', 'Padre Hurtado', 'Peñaflor', 'Talagante', 'El Monte', 'Isla de Maipo', 'Colina', 'Lampa', 'Tiltil', 'San José de Maipo', 'Pirque', 'Puente Alto', 'San Bernardo', 'Buin', 'Calera de Tango', 'Paine']},
-    { region: "Libertador General Bernardo O'Higgins", comunas: ['Rancagua', 'Codegua', 'Coinco', 'Coltauco', 'Doñihue', 'Graneros', 'Las Cabras', 'Machalí', 'Malloa', 'Mostazal', 'Olivar', 'Peumo', 'Pichidegua', 'Quinta de Tilcoco', 'Rengo', 'Requínoa', 'San Vicente', 'Pichilemu', 'La Estrella', 'Litueche', 'Marchihue', 'Navidad', 'Paredones', 'San Fernando', 'Chépica', 'Chimbarongo', 'Lolol', 'Nancagua', 'Palmilla', 'Peralillo', 'Placilla', 'Pumanque', 'Santa Cruz']},
-    { region: 'Maule', comunas: ['Talca', 'Constitución', 'Curepto', 'Empedrado', 'Maule', 'Pelarco', 'Pencahue', 'Río Claro', 'San Clemente', 'San Rafael', 'Cauquenes', 'Chanco', 'Pelluhue', 'Curicó', 'Hualañé', 'Licantén', 'Molina', 'Rauco', 'Romeral', 'Sagrada Familia', 'Teno', 'Vichuquén', 'Linares', 'Colbún', 'Longaví', 'Parral', 'Retiro', 'San Javier', 'Villa Alegre', 'Yerbas Buenas']},
-    { region: 'Ñuble', comunas: ['Cobquecura', 'Coelemu', 'Ninhue', 'Portezuelo', 'Quirihue', 'Ránquil', 'Treguaco', 'Bulnes', 'Chillán Viejo', 'Chillán', 'El Carmen', 'Pemuco', 'Pinto', 'Quillón', 'San Ignacio', 'Yungay', 'Coihueco', 'Ñiquén', 'San Carlos', 'San Fabián', 'San Nicolás']},
-    { region: 'Biobío', comunas: ['Concepción', 'Coronel', 'Chiguayante', 'Florida', 'Hualqui', 'Lota', 'Penco', 'San Pedro de la Paz', 'Santa Juana', 'Talcahuano', 'Tomé', 'Hualpén', 'Lebu', 'Arauco', 'Cañete', 'Contulmo', 'Curanilahue', 'Los Álamos', 'Tirúa', 'Los Ángeles', 'Antuco', 'Cabrero', 'Laja', 'Mulchén', 'Nacimiento', 'Negrete', 'Quilaco', 'Quilleco', 'San Rosendo', 'Santa Bárbara', 'Tucapel', 'Yumbel', 'Alto Biobío']},
-    { region: 'La Araucanía', comunas: ['Temuco', 'Carahue', 'Cunco', 'Curarrehue', 'Freire', 'Galvarino', 'Gorbea', 'Loncoche', 'Melipeuco', 'Nueva Imperial', 'Padre las Casas', 'Perquenco', 'Pitrufquén', 'Pucón', 'Saavedra', 'Teodoro Schmidt', 'Toltén', 'Vilcún', 'Villarrica', 'Cholchol', 'Angol', 'Collipulli', 'Curacautín', 'Ercilla', 'Lonquimay', 'Los Sauces', 'Lumaco', 'Purén', 'Renaico', 'Traiguén', 'Victoria']},
-    { region: 'Los Ríos', comunas: ['Valdivia', 'Corral', 'Lanco', 'Los Lagos', 'Máfil', 'Mariquina', 'Paillaco', 'Panguipulli', 'La Unión', 'Futrono', 'Lago Ranco', 'Río Bueno']},
-    { region: 'Los Lagos', comunas: ['Puerto Montt', 'Calbuco', 'Cochamó', 'Fresia', 'Frutillar', 'Los Muermos', 'Llanquihue', 'Maullín', 'Puerto Varas', 'Castro', 'Ancud', 'Chonchi', 'Curaco de Vélez', 'Dalcahue', 'Puqueldón', 'Queilén', 'Quellón', 'Quemchi', 'Quinchao', 'Osorno', 'Puerto Octay', 'Purranque', 'Puyehue', 'Río Negro', 'San Juan de la Costa', 'San Pablo', 'Chaitén', 'Futaleufú', 'Hualaihué', 'Palena']},
-    // FIX: el Sheet guarda esta región como "Aysén"; con el nombre largo la búsqueda
-    // por región volvía vacía y sus obras no aparecían en la app.
-    { region: 'Aysén', comunas: ['Coyhaique', 'Lago Verde', 'Aysén', 'Cisnes', 'Guaitecas', 'Cochrane', "O'Higgins", 'Tortel', 'Chile Chico', 'Río Ibáñez']},
-    { region: 'Magallanes y de la Antártica Chilena', comunas: ['Punta Arenas', 'Laguna Blanca', 'Río Verde', 'San Gregorio', 'Cabo de Hornos (Ex Navarino)', 'Antártica', 'Porvenir', 'Primavera', 'Timaukel', 'Natales', 'Torres del Paine']},
-];
-
-
-// Devuelve las opciones de un selector incluyendo el valor actual de la fila aunque
-// no esté en la lista. Sin esto, un valor del Sheet que no calza (p. ej. "No Iniciada"
-// o un Tipo Construcción importado) se mostraba como selector vacío.
-const withCurrent = (options: string[], current: unknown): string[] => {
-  const value = current == null ? '' : String(current).trim();
-  return value && !options.includes(value) ? [value, ...options] : options;
-};
-
-// Campos que deben venir llenos para crear un PdV (antes se podía guardar sin Canal,
-// y hoy hay 805 registros con Canal vacío).
-const requiredNewObraFields = ['Empresa', 'Obra / PDV', 'Vendedor', 'Canal', 'Región', 'Comuna'];
-
-// Normaliza textos para comparar sin tildes ni mayúsculas.
-const normalizar = (t: unknown) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-// "Aysén" == "Aysén del General Carlos Ibáñez del Campo" (mismo criterio que el backend).
-const mismaRegion = (a: unknown, b: unknown) => {
-  const x = normalizar(a), y = normalizar(b);
-  return !!x && !!y && (x === y || x.startsWith(y + ' ') || y.startsWith(x + ' '));
-};
-
-
-
-// --- Interfaces ---
-interface ObraDetails { [key: string]: any; }
-interface ClientInfo { empresa: string; rut: string; }
-// Quién está usando la app, según la hoja Usuarios del radar.
+// ---------- Tipos y utilidades ----------
+type Obra = Record<string, unknown>;
+interface Cliente { empresa: string; rut: string; }
 interface Usuario { vendedor: string; rol: 'vendedor' | 'jefe zonal' | 'jefatura'; correo: string; equipo?: string[]; }
 
-// --- Componente de Autocompletado ---
-const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, placeholder, disabled }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onSuggestionClick: (suggestion: string) => void; suggestions: string[]; placeholder: string; disabled: boolean; }) => {
-  const [showSuggestions, setShowSuggestions] = useState(true);
+const txt = (o: Obra | null | undefined, k: string) => String(o?.[k] ?? '').trim();
+const DIA = 86400000;
 
-  useEffect(() => {
-    setShowSuggestions(true);
-  }, [value]);
+function diasDesde(valor: unknown): number | null {
+  if (!valor) return null;
+  const s = String(valor);
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); // 14/1/2026
+  const d = m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : new Date(s);
+  if (isNaN(d.getTime())) return null;
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / DIA));
+}
+function textoDias(d: number | null) {
+  if (d === null) return 'Nunca actualizada';
+  if (d === 0) return 'Actualizada hoy';
+  if (d === 1) return 'Actualizada ayer';
+  return `Hace ${d} días`;
+}
+const claseDias = (d: number | null) => (d === null || d > 90 ? 'bad' : d > 45 ? 'warn' : 'ok');
 
-  const handleSuggestionClick = (suggestion: string) => {
-    setShowSuggestions(false);
-    onSuggestionClick(suggestion);
-  };
-  
+// ---------- Piezas reutilizables ----------
+function Chips({ opciones, valor, onCambio, etiqueta, chico }: {
+  opciones: string[]; valor: string; onCambio: (v: string) => void; etiqueta: string; chico?: boolean;
+}) {
   return (
-    <div className="autocomplete-container">
-      <input 
-        type="text" 
-        value={value} 
-        onChange={onChange} 
-        placeholder={placeholder} 
-        disabled={disabled} 
-        autoComplete="off" 
-        onFocus={() => setShowSuggestions(true)}
-        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-      />
-      {showSuggestions && suggestions.length > 0 && (
-        <ul className="suggestions-list">
-          {suggestions.map((suggestion, index) => (
-            <li key={index} onMouseDown={() => handleSuggestionClick(suggestion)}>
-              {suggestion}
+    <div className="chips" role="group" aria-label={etiqueta}>
+      {opciones.map(o => (
+        <button key={o} type="button" className={`chip${chico ? ' chip-sm' : ''}`}
+          aria-pressed={normalizar(valor) === normalizar(o)}
+          onClick={() => onCambio(normalizar(valor) === normalizar(o) ? '' : o)}>
+          {o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Barra de etapas: se toca la etapa en que está la obra.
+function BarraEtapas({ estado, onCambio }: { estado: string; onCambio: (v: string) => void }) {
+  const idx = etapasObra.findIndex(e => normalizar(e) === normalizar(estado));
+  return (
+    <>
+      <div className="track track-big" role="radiogroup" aria-label="Etapa de la obra">
+        {etapasObra.map((e, i) => (
+          <button key={e} type="button" role="radio" aria-checked={i === idx}
+            className={i === idx ? 'now' : i < idx ? 'on' : ''} onClick={() => onCambio(e)}>
+            <span className="bar" />
+            <span className="lbl">{etapasCortas[e]}</span>
+          </button>
+        ))}
+      </div>
+      <div className="track-extra">
+        {estadosEspeciales.filter(e => e !== 'No Aplica').map(e => (
+          <button key={e} type="button" className="chip chip-sm" aria-pressed={normalizar(estado) === normalizar(e)}
+            onClick={() => onCambio(e)}>{e === 'Sin Información' ? 'No sé en qué etapa está' : e}</button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function MiniEtapas({ estado }: { estado: string }) {
+  const idx = etapasObra.findIndex(e => normalizar(e) === normalizar(estado));
+  if (idx === -1) {
+    return normalizar(estado) === 'detenida' ? <span className="track-tag">Detenida</span> : null;
+  }
+  return (
+    <span className="track track-mini" aria-label={`Etapa: ${etapasCortas[etapasObra[idx]]}`} title={etapasCortas[etapasObra[idx]]}>
+      {etapasObra.map((e, i) => <span key={e} className={i === idx ? 'now' : i < idx ? 'on' : ''} />)}
+    </span>
+  );
+}
+
+function Autocompletar({ id, valor, onTexto, onElegir, opciones, placeholder }: {
+  id: string; valor: string; onTexto: (v: string) => void; onElegir: (o: { label: string; sub?: string }) => void;
+  opciones: { label: string; sub?: string }[]; placeholder?: string;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [activo, setActivo] = useState(0);
+  const visibles = abierto && valor.trim().length >= 2 ? opciones.slice(0, 8) : [];
+  const elegir = (o: { label: string; sub?: string }) => { onElegir(o); setAbierto(false); };
+  return (
+    <div className="ac">
+      <input id={id} className="input" value={valor} placeholder={placeholder} autoComplete="off"
+        role="combobox" aria-expanded={visibles.length > 0} aria-controls={`${id}-lista`}
+        onChange={e => { onTexto(e.target.value); setAbierto(true); setActivo(0); }}
+        onFocus={() => setAbierto(true)}
+        onBlur={() => setTimeout(() => setAbierto(false), 150)}
+        onKeyDown={e => {
+          if (!visibles.length) return;
+          if (e.key === 'ArrowDown') { e.preventDefault(); setActivo(a => Math.min(a + 1, visibles.length - 1)); }
+          if (e.key === 'ArrowUp') { e.preventDefault(); setActivo(a => Math.max(a - 1, 0)); }
+          if (e.key === 'Enter') { e.preventDefault(); elegir(visibles[activo]); }
+          if (e.key === 'Escape') setAbierto(false);
+        }} />
+      {visibles.length > 0 && (
+        <ul className="ac-list" id={`${id}-lista`} role="listbox">
+          {visibles.map((o, i) => (
+            <li key={o.label + (o.sub || '')} role="option" aria-selected={i === activo} onMouseDown={() => elegir(o)}>
+              {o.label}{o.sub && <small>{o.sub}</small>}
             </li>
           ))}
         </ul>
       )}
     </div>
   );
-};
+}
 
+const IconoBuscar = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+  </svg>
+);
 
-// --- Estado Inicial para una Nueva Obra ---
-// FIX: las claves ahora coinciden EXACTAMENTE con los encabezados de tu Google Sheet.
-// Antes: 'Observaciones de Compra' (no existe en el Sheet -> por eso "Próximos Pasos"
-// nunca se escribía en la columna L) y 'M²' (no existe -> por eso "Pisos" quedaba vacío).
-// Se quitaron 'Fecha Fin Obra' y 'Comentarios Última Visita' de este estado inicial
-// porque no forman parte del formulario de creación (y 'Fecha Fin Obra' ni siquiera
-// es una columna real del Sheet).
-const initialNewObraState = {
-  'Empresa': '', 'Obra / PDV': '', 'Vendedor': '', 'Canal': '', 'Tipo Construcción': '', 'Región': '', 'Comuna': '', 'Dirección': '', 'Estado de Obra': '', 'Les Vendemos?': '', 'Próximos Pasos': '', 'Descripción de la obra o PDV': '', 'Pisos': '', 
-  'Contacto': '', 
-  'Rut Empresa': ''
-};
+// ---------- Pantalla 1: mis obras ----------
+function MisObras({ usuario, obras, cargando, error, onAbrir, onNueva }: {
+  usuario: Usuario; obras: Obra[]; cargando: boolean; error: string;
+  onAbrir: (o: Obra) => void; onNueva: (texto: string) => void;
+}) {
+  const [busqueda, setBusqueda] = useState('');
+  const [vendedor, setVendedor] = useState('');
+  const [orden, setOrden] = useState<'pendientes' | 'recientes'>('pendientes');
+  const [limite, setLimite] = useState(40);
+  const veVarias = usuario.rol !== 'vendedor';
 
+  const vendedores = useMemo(
+    () => veVarias ? [...new Set(obras.map(o => txt(o, 'Vendedor')).filter(Boolean))].sort() : [],
+    [obras, veVarias]);
 
-function Radar({ usuario }: { usuario: Usuario }) {
-  const esJefatura = usuario.rol === 'jefatura';
-  // Jefe zonal: puede asignar a sí mismo o a su equipo. Vendedor: solo a sí mismo.
-  const vendedoresAsignables = esJefatura ? vendedorOptions : [usuario.vendedor, ...(usuario.equipo || [])];
-  const muestraVendedor = usuario.rol !== 'vendedor';
-  // Un vendedor solo crea obras a su nombre (el servidor también lo obliga).
-  const obraVacia = (region = ''): ObraDetails => ({ ...initialNewObraState, 'Región': region, 'Vendedor': esJefatura ? '' : usuario.vendedor });
-  // --- Estados ---
-  // Región ahora es un filtro opcional ('' = todas), no un paso obligatorio.
-  const [regionFilter, setRegionFilter] = useState('');
-  const [allData, setAllData] = useState<ObraDetails[]>([]);
-  const [clientList, setClientList] = useState<ClientInfo[]>([]);
-  const [companyInput, setCompanyInput] = useState('');
-  const [companySuggestions, setCompanySuggestions] = useState<string[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState('');
-  const [obras, setObras] = useState<ObraDetails[]>([]);
-  const [selectedObraId, setSelectedObraId] = useState('');
-  const [obraDetails, setObraDetails] = useState<ObraDetails | null>(null);
-  const [initialObraDetails, setInitialObraDetails] = useState<ObraDetails | null>(null);
-  const [comunaInput, setComunaInput] = useState('');
-  const [comunaSuggestions, setComunaSuggestions] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [newObraData, setNewObraData] = useState<ObraDetails>(() => obraVacia());
-  const [newCompanyInput, setNewCompanyInput] = useState('');
-  const [newCompanySuggestions, setNewCompanySuggestions] = useState<ClientInfo[]>([]);
+  const lista = useMemo(() => {
+    const q = normalizar(busqueda);
+    const filtradas = obras.filter(o => {
+      if (vendedor && normalizar(txt(o, 'Vendedor')) !== normalizar(vendedor)) return false;
+      if (!q) return true;
+      return ['Empresa', 'Obra / PDV', 'Comuna', 'ID', 'Dirección'].some(k => normalizar(txt(o, k)).includes(q));
+    });
+    const dias = (o: Obra) => diasDesde(o['Última Actualización']);
+    return filtradas.sort((a, b) => {
+      const da = dias(a) ?? 99999, db = dias(b) ?? 99999;
+      return orden === 'pendientes' ? db - da : da - db;
+    });
+  }, [obras, busqueda, vendedor, orden]);
 
-  // --- Carga Inicial de Clientes ---
-  useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const data = await postApi<ClientInfo[]>({ action: 'getClientList' });
-        if (data.status === 'success') {
-          setClientList(data.data || []);
-        }
-      } catch (error) {
-        console.error('No se pudo cargar la lista de clientes.');
-      }
-    };
-    fetchClients();
-  }, []);
+  const atrasadas = useMemo(() => obras.filter(o => { const d = diasDesde(o['Última Actualización']); return d === null || d > 45; }).length, [obras]);
+  const titulo = usuario.rol === 'jefatura' ? 'Todo el radar' : usuario.rol === 'jefe zonal' ? 'Tus obras y las de tu equipo' : 'Tus obras';
 
-  // --- Carga de TODAS las obras una sola vez al abrir ---
-  // El servidor igual leía la hoja completa en cada cambio de región, así que pedir
-  // todo de una vez cuesta lo mismo y después filtrar/buscar es instantáneo.
-  useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      setMessage('');
-      try {
-        const data = await postApi<ObraDetails[]>({ action: 'getAllData' });
-        if (data.status === 'success') {
-          setAllData(data.data || []);
-        } else { throw new Error(mensajeServidor(data.message)); }
-      } catch (error) {
-        setMessage('❌ No se pudieron cargar las obras. Revisa tu conexión y recarga la página.');
-        setAllData([]);
-      }
-      setLoading(false);
-    };
-    fetchAllData();
-  }, []);
-
-  // --- Búsqueda y Filtrado (Local) ---
-  useEffect(() => {
-    if (companyInput.length < 2) { setCompanySuggestions([]); return; }
-    const source = regionFilter ? allData.filter(item => mismaRegion(item['Región'], regionFilter)) : allData;
-    const uniqueCompanies = [...new Set(source.map(item => item.Empresa))];
-    const query = normalizar(companyInput);
-    const filtered = uniqueCompanies.filter(c => c && normalizar(c).includes(query));
-    setCompanySuggestions(filtered.slice(0, 10));
-  }, [companyInput, allData, regionFilter]);
-  
-  useEffect(() => {
-    if (newCompanyInput.length < 2) { setNewCompanySuggestions([]); return; }
-    const filtered = clientList.filter(c => c.empresa && c.empresa.toLowerCase().includes(newCompanyInput.toLowerCase()));
-    setNewCompanySuggestions(filtered.slice(0, 10));
-  }, [newCompanyInput, clientList]);
-
-
-  useEffect(() => {
-    if (comunaInput.length < 2) { setComunaSuggestions([]); return; }
-    const comunasDeRegion = regionesYComunas.find(r => mismaRegion(r.region, isCreateMode ? newObraData['Región'] : obraDetails?.['Región']))?.comunas || [];
-    const filtered = comunasDeRegion.filter(c => c.toLowerCase().includes(comunaInput.toLowerCase()));
-    setComunaSuggestions(filtered.slice(0, 10));
-  }, [comunaInput, isCreateMode, newObraData, obraDetails]);
-
-  useEffect(() => {
-    if (!selectedCompany) { setObras([]); setSelectedObraId(''); return; }
-    const source = regionFilter ? allData.filter(item => mismaRegion(item['Región'], regionFilter)) : allData;
-    const filteredObras = source.filter(item => item.Empresa === selectedCompany);
-    setObras(filteredObras);
-  }, [selectedCompany, allData, regionFilter]);
-
-  useEffect(() => {
-    if (!selectedObraId) {
-      if (!isCreateMode) { setObraDetails(null); setInitialObraDetails(null); }
-      return;
-    }
-    const details = allData.find(item => item.ID === selectedObraId);
-    if (details) {
-      setObraDetails(details);
-      setInitialObraDetails(details);
-      setComunaInput(details['Comuna'] || '');
-    }
-  }, [selectedObraId, allData, isCreateMode]);
-
-// --- Manejadores de Eventos ---
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setObraDetails(prev => (prev ? { ...prev, [name]: value } : null));
-  };
-
-  const handleNewObraInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewObraData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAction = async (updates: ObraDetails | {} = {}) => {
-    if (!selectedObraId) return;
-    setLoading(true);
-    setMessage('');
-    try {
-      const data = await postApi<{ row?: ObraDetails }>({ action: 'editObra', id: selectedObraId, updates });
-      if (data.status === 'success') {
-        setMessage(Object.keys(updates).length > 0 ? '✅ Cambios guardados.' : '✅ Visita registrada.');
-        // En vez de recargar todas las obras, se actualiza solo la fila editada
-        // con lo que devuelve el servidor (incluye la nueva fecha de actualización).
-        const filaActualizada = data.data && data.data.row;
-        if (filaActualizada) {
-          setAllData(prev => prev.map(item => item.ID === selectedObraId ? filaActualizada : item));
-        } else {
-          setAllData(prev => prev.map(item => item.ID === selectedObraId ? { ...item, ...updates } : item));
-        }
-      } else { throw new Error(mensajeServidor(data.message)); }
-    } catch (error) {
-      setMessage(`❌ ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    }
-    setLoading(false);
-  };
-
-  const handleSaveChanges = () => {
-    if (!obraDetails || !initialObraDetails) return;
-    const updates: ObraDetails = {};
-    for (const key in obraDetails) {
-      if (obraDetails[key] !== initialObraDetails[key]) { updates[key] = obraDetails[key]; }
-    }
-    handleAction(updates);
-  };
-  
-  const handleCreateObra = async () => {
-    const missing = requiredNewObraFields.filter(f => !String(newObraData[f] ?? '').trim());
-    if (missing.length > 0) {
-      setMessage(`❌ Completa: ${missing.join(', ')}.`);
-      return;
-    }
-    setLoading(true);
-    setMessage('');
-    try {
-      const result = await postApi<ObraDetails>({ action: 'createNewObra', data: newObraData });
-      if (result.status === 'success' && result.data) {
-        const creada = result.data;
-        setMessage(`✅ Obra creada: ${creada.ID}.`);
-        setAllData(prevData => [...prevData, creada]);
-        setIsCreateMode(false);
-        setNewObraData(obraVacia());
-      } else { throw new Error(mensajeServidor(result.message)); }
-    } catch (error) {
-      setMessage(`❌ ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    }
-    setLoading(false);
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const parts = dateString.split('-');
-      const utcDate = new Date(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
-      return utcDate.toLocaleDateString('es-CL', { timeZone: 'UTC' });
-    }
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('es-CL', { timeZone: 'UTC' });
-  };
-
-  // FIX: helper para determinar la clase del mensaje (success/error) en vez de
-  // depender del selector CSS roto [class*="✅"].
-  const messageClass = message.startsWith('✅') ? 'success' : message.startsWith('❌') ? 'error' : '';
-  
   return (
     <>
-      {!isCreateMode ? (
-        <>
-          {/* BUSCADOR: empresa directo, región como filtro opcional */}
-          <div className="card">
-              <div className="form-grid">
-                <div className="form-field">
-                  <label>Empresa</label>
-                  <AutocompleteInput value={companyInput} onChange={(e) => { setCompanyInput(e.target.value); setSelectedCompany(''); }} onSuggestionClick={(company) => { setCompanyInput(company); setSelectedCompany(company); setCompanySuggestions([]); }} suggestions={companySuggestions} placeholder={loading ? 'Cargando obras...' : 'Busque una empresa...'} disabled={loading} />
-                </div>
-                <div className="form-field">
-                  <label>Región (opcional)</label>
-                  <select
-                    value={regionFilter}
-                    onChange={(e) => { setRegionFilter(e.target.value); setSelectedCompany(''); setCompanyInput(''); setSelectedObraId(''); }}
-                    disabled={loading}
-                  >
-                    <option value="">Todas las regiones</option>
-                    {regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}
-                  </select>
-                </div>
-                <div className="form-field full-width">
-                  <label>Obra / PDV</label>
-                  <select value={selectedObraId} onChange={(e) => setSelectedObraId(e.target.value)} disabled={loading || !selectedCompany}>
-                    <option value="">-- Seleccione un PdV --</option>
-                    {obras.map(obra => <option key={obra.ID} value={obra.ID}>{obra.ID} - {obra['Obra / PDV']}{obra['Comuna'] ? ` (${obra['Comuna']})` : ''}{muestraVendedor && obra['Vendedor'] ? ` · ${obra['Vendedor']}` : ''}</option>)}
-                  </select>
-                </div>
-              </div>
-              {!selectedObraId && (
-                <div className="actions" style={{ justifyContent: 'center', borderTop: 'none', paddingTop: '1rem' }}>
-                  <button onClick={() => { setIsCreateMode(true); setComunaInput(''); setNewCompanyInput(''); setNewObraData(obraVacia(regionFilter)); }} className="secondary-button" disabled={loading}>Agregar Nuevo Punto de Venta</button>
+      <h1 className="rc-title">{titulo}</h1>
+      <p className="rc-sub">
+        {cargando ? 'Cargando obras…' : `${obras.length} obras y puntos de venta. ${atrasadas} llevan más de 45 días sin actualizar.`}
+      </p>
+
+      <div className="rc-actions">
+        <div>
+          <label className="rc-search">
+            <IconoBuscar />
+            <input type="search" value={busqueda} onChange={e => { setBusqueda(e.target.value); setLimite(40); }}
+              placeholder="Buscar obra para actualizarla" aria-label="Buscar obra para actualizarla" disabled={cargando} />
+          </label>
+          <p className="rc-search-hint">Por empresa, nombre de obra, comuna o código.</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => onNueva(busqueda)} disabled={cargando}>
+          + Agregar al radar
+        </button>
+      </div>
+
+      <div className="rc-filters">
+        <span className="label">Ordenar:</span>
+        <button className="chip chip-sm" aria-pressed={orden === 'pendientes'} onClick={() => setOrden('pendientes')}>Más atrasadas primero</button>
+        <button className="chip chip-sm" aria-pressed={orden === 'recientes'} onClick={() => setOrden('recientes')}>Recién actualizadas</button>
+      </div>
+      {veVarias && vendedores.length > 1 && (
+        <div className="rc-filters">
+          <span className="label">Vendedor:</span>
+          <button className="chip chip-sm" aria-pressed={!vendedor} onClick={() => setVendedor('')}>Todos</button>
+          {vendedores.map(v => (
+            <button key={v} className="chip chip-sm" aria-pressed={vendedor === v} onClick={() => setVendedor(vendedor === v ? '' : v)}>{v}</button>
+          ))}
+        </div>
+      )}
+
+      {error && <p className="notice">{error}</p>}
+      {cargando && <div className="loading">Cargando tus obras…</div>}
+
+      {!cargando && !error && (
+        <div className="rc-list">
+          {lista.length === 0 ? (
+            <div className="empty">
+              {busqueda
+                ? <><p>No hay obras que coincidan con “{busqueda}”.</p><p>Si es nueva, agrégala al radar.</p></>
+                : <p>Todavía no tienes obras en el radar.</p>}
+              <button className="btn btn-primary" onClick={() => onNueva(busqueda)}>+ Agregar al radar</button>
+            </div>
+          ) : (
+            <>
+              {lista.slice(0, limite).map(o => {
+                const d = diasDesde(o['Última Actualización']);
+                return (
+                  <button key={txt(o, 'ID')} className="rc-row" onClick={() => onAbrir(o)}>
+                    <span>
+                      <span className="rc-row-name">{txt(o, 'Obra / PDV') || 'Sin nombre'}</span><br />
+                      <span className="rc-row-company">{txt(o, 'Empresa')}</span>
+                    </span>
+                    <span className="rc-row-side"><span className={`fresh ${claseDias(d)}`}>{textoDias(d)}</span></span>
+                    <span className="rc-row-meta">
+                      <span>{[txt(o, 'Comuna'), txt(o, 'ID')].filter(Boolean).join(', ')}</span>
+                      {veVarias && <span>{txt(o, 'Vendedor')}</span>}
+                      <MiniEtapas estado={txt(o, 'Estado de Obra')} />
+                    </span>
+                  </button>
+                );
+              })}
+              {lista.length > limite && (
+                <div className="rc-more">
+                  <button className="btn btn-ghost btn-small" onClick={() => setLimite(l => l + 40)}>
+                    Mostrar 40 más (quedan {lista.length - limite})
+                  </button>
                 </div>
               )}
-          </div>
-        </>
-      ) : (
-        /* CASO 3: MODO CREAR NUEVA OBRA */
-        <div className="card">
-            <h2>Agregar Nuevo PdV</h2>
-            <div className="form-grid-details">
-              <div className="form-field">
-                <label>Empresa *</label>
-                  <AutocompleteInput 
-                    value={newCompanyInput}
-                    onChange={(e) => {
-                      setNewCompanyInput(e.target.value);
-                      setNewObraData(prev => ({...prev, 'Empresa': e.target.value, 'Rut Empresa': ''}));
-                    }}
-                    onSuggestionClick={(suggestion) => {
-                      const foundClient = clientList.find(c => c.empresa === suggestion);
-                      const clientRut = foundClient ? foundClient.rut : '';
-                      setNewCompanyInput(suggestion);
-                      setNewObraData(prev => ({...prev, 'Empresa': suggestion, 'Rut Empresa': clientRut }));
-                      setNewCompanySuggestions([]);
-                    }}
-                    suggestions={newCompanySuggestions.map(c => c.empresa)}
-                    placeholder="Busque o ingrese empresa..."
-                    disabled={loading}
-                  />
-              </div>
-              <div className="form-field"><label>Rut Empresa</label><input type="text" name="Rut Empresa" value={newObraData['Rut Empresa']} onChange={handleNewObraInputChange} /></div>
-                <div className="form-field field-highlight"><label>Obra / PDV *</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
-                {vendedoresAsignables.length > 1
-                  ? <div className="form-field"><label>Vendedor *</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedoresAsignables.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
-                  : <div className="form-field"><label>Vendedor</label><input type="text" value={usuario.vendedor} disabled /></div>}
-                <div className="form-field"><label>Canal *</label><select name="Canal" value={newObraData['Canal']} onChange={handleNewObraInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-              
-              <div className="form-field"><label>Región *</label><select name="Región" value={newObraData['Región']} onChange={(e) => { const region = e.target.value; setNewObraData(prev => ({ ...prev, 'Región': region, 'Comuna': '' })); setComunaInput(''); }}><option value="">-- Elija una región --</option>{regionesYComunas.map(r => <option key={r.region} value={r.region}>{r.region}</option>)}</select></div>
-              <div className="form-field">
-                  <label>Comuna *</label>
-                  <AutocompleteInput value={comunaInput} onChange={(e) => { setComunaInput(e.target.value); setNewObraData(prev => ({...prev, 'Comuna': e.target.value})); }} onSuggestionClick={(comuna) => { setComunaInput(comuna); setNewObraData(prev => ({...prev, 'Comuna': comuna})); setComunaSuggestions([]); }} suggestions={comunaSuggestions} placeholder={newObraData['Región'] ? 'Busque una comuna...' : 'Elija primero la región'} disabled={!newObraData['Región']} />
-                </div>
-                <div className="form-field"><label>Dirección</label><input type="text" name="Dirección" value={newObraData['Dirección']} onChange={handleNewObraInputChange} /></div>
-                
-                {/* CAMPOS BORRADOS: Monto Presupuesto y Fecha Fin */}
-                
-                {/* FIX: name="Próximos Pasos" (antes "Observaciones de Compra", una
-                    columna que no existe en el Sheet -> por eso nunca se guardaba
-                    en la columna L "Próximos Pasos"). */}
-                <div className="form-field"><label>Próximos Pasos</label><textarea name="Próximos Pasos" value={newObraData['Próximos Pasos']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
-              
-              <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={newObraData['Tipo Construcción']} onChange={handleNewObraInputChange}><option value="">-- Elija un tipo --</option>{tipoConstruccionOptions.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
-              
-                <div className="form-field field-highlight"><label>*ESTADO DE LA OBRA*</label><select name="Estado de Obra" value={newObraData['Estado de Obra']} onChange={handleNewObraInputChange}><option value="">-- Cambiar Estado --</option>{estadoObraOptions.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
-                <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={newObraData['Les Vendemos?']} onChange={handleNewObraInputChange}><option value="">-- Seleccione --</option>{lesVendemosOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
-                {/* FIX: name="Pisos" (antes "M²", que no existe como columna -> por
-                    eso "N° de Pisos" nunca se imprimía en el Sheet). */}
-                <div className="form-field"><label>N° de Pisos</label><input type="number" name="Pisos" value={newObraData['Pisos']} onChange={handleNewObraInputChange} /></div>
-              <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={newObraData['Descripción de la obra o PDV']} onChange={handleNewObraInputChange} rows={2}></textarea></div>
-              
-              <div className="form-field">
-                <label>Contacto</label>
-                <textarea 
-                  name="Contacto" 
-                  value={newObraData['Contacto']} 
-                  onChange={handleNewObraInputChange} 
-                  rows={4} 
-                  placeholder="Ingrese información de contacto (nombre, email, teléfono, cargo, etc.)"
-                />
-              </div>
-
-              {/* CAMPO BORRADO: Comentarios Iniciales */}
-
-            </div> 
-            
-            <div className="actions">
-              <button onClick={() => setIsCreateMode(false)} className="secondary-button">Cancelar</button>
-              <button onClick={handleCreateObra} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Nuevo PdV'}</button>
-            </div>
+            </>
+          )}
         </div>
       )}
-
-      {loading && allData.length === 0 && !isCreateMode && <div className="loader">Cargando obras...</div>}
-
-      {/* CASO 4: DETALLES DE OBRA EXISTENTE */}
-      {obraDetails && !loading && !isCreateMode && (
-        <div className="card details">
-          <h2>Detalles de la Obra</h2>
-          <div className="form-grid-details">
-            <div className="form-field"><label>Empresa</label><input type="text" value={obraDetails['Empresa'] || ''} disabled /></div>
-              <div className="form-field field-highlight"><label>Obra / PDV</label><input type="text" name="Obra / PDV" value={obraDetails['Obra / PDV'] || ''} onChange={handleInputChange} /></div>
-              <div className="form-field"><label>Vendedor</label><input type="text" value={obraDetails['Vendedor'] || ''} disabled /></div>
-              <div className="form-field"><label>Canal</label><input type="text" value={obraDetails['Canal'] || ''} disabled /></div>
-              <div className="form-field"><label>Región</label><input type="text" value={obraDetails['Región'] || ''} disabled /></div>
-              <div className="form-field"><label>Comuna</label><input type="text" value={obraDetails['Comuna'] || ''} disabled /></div>
-              <div className="form-field"><label>*DIRECCIÓN*</label><input type="text" name="Dirección" value={obraDetails['Dirección'] || ''} onChange={handleInputChange} /></div>
-            
-            <div className="form-field"><label>Tipo Construcción</label><select name="Tipo Construcción" value={obraDetails['Tipo Construcción'] || ''} onChange={handleInputChange}><option value="">-- Elija un tipo --</option>{withCurrent(tipoConstruccionOptions, obraDetails['Tipo Construcción']).map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
-              <div className="form-field field-highlight"><label>Estado de Obra</label><select name="Estado de Obra" value={obraDetails['Estado de Obra'] || ''} onChange={handleInputChange}><option value="">-- Cambiar Estado --</option>{withCurrent(estadoObraOptions, obraDetails['Estado de Obra']).map(e => <option key={e} value={e}>{e}</option>)}</select></div>
-              <div className="form-field"><label>Les Vendemos?</label><select name="Les Vendemos?" value={obraDetails['Les Vendemos?'] || ''} onChange={handleInputChange}><option value="">-- Seleccione --</option>{withCurrent(lesVendemosOptions, obraDetails['Les Vendemos?']).map(o => <option key={o} value={o}>{o}</option>)}</select></div>
-              {/* FIX: name="Próximos Pasos" (antes "Observaciones de Compra", columna
-                  inexistente en el Sheet). Se alineó también el label. */}
-              <div className="form-field"><label>Próximos Pasos</label><textarea name="Próximos Pasos" value={obraDetails['Próximos Pasos'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
-              
-              {/* CAMPOS BORRADOS: Monto y Fecha Fin */}
-            
-            <div className="form-field"><label>Descripción de la obra o PDV</label><textarea name="Descripción de la obra o PDV" value={obraDetails['Descripción de la obra o PDV'] || ''} onChange={handleInputChange} rows={2}></textarea></div>
-            {/* FIX: name="Pisos" (antes "M²", columna inexistente en el Sheet). */}
-            <div className="form-field"><label>Pisos</label><input type="number" name="Pisos" value={obraDetails['Pisos'] || ''} onChange={handleInputChange} /></div>
-           
-            <div className="form-field">
-              <label>Contacto</label>
-              <textarea 
-                name="Contacto" 
-                value={obraDetails['Contacto'] || ''} 
-                onChange={handleInputChange} 
-                rows={4} 
-              />
-            </div>
-
-            <div className="form-field"><label>Acciones Última Reunion</label><textarea value={obraDetails['Acciones Última Reunion'] || ''} rows={2} disabled></textarea></div>
-            <div className="form-field"><label>Rut Empresa</label><textarea name="Rut Empresa" value={obraDetails['Rut Empresa'] || ''} onChange={handleInputChange} rows={1}></textarea></div>
-            <div className="form-field"><label>Última Actualización</label><input type="text" value={formatDate(obraDetails['Última Actualización'])} disabled /></div>
-          
-          </div> 
-
-          <div className="actions">
-            <button onClick={handleSaveChanges} disabled={loading}>
-              {loading ? 'Guardando...' : 'Guardar Cambios y Registrar Visita'}
-            </button>
-          </div>
-        </div>
-      )}
-      
-      {message && <p className={`message ${messageClass}`}>{message}</p>}
     </>
   );
 }
 
-// --- Sesión: login con la cuenta de la intranet y datos del usuario en el radar ---
+// ---------- Pantalla 2: actualizar una obra ----------
+function FichaObra({ usuario, obra, onVolver, onGuardada, avisar }: {
+  usuario: Usuario; obra: Obra; onVolver: () => void; onGuardada: (o: Obra) => void; avisar: (m: string, error?: boolean) => void;
+}) {
+  const [datos, setDatos] = useState<Obra>(obra);
+  const [guardando, setGuardando] = useState(false);
+  const set = (k: string, v: string) => setDatos(d => ({ ...d, [k]: v }));
+  const esObra = esCanalDeObra(txt(obra, 'Canal')) || etapasObra.some(e => normalizar(e) === normalizar(txt(obra, 'Estado de Obra')));
+
+  const cambios = useMemo(() => {
+    const c: Record<string, string> = {};
+    for (const k of Object.keys(datos)) if (txt(datos, k) !== txt(obra, k)) c[k] = txt(datos, k);
+    return c;
+  }, [datos, obra]);
+  const hayCambios = Object.keys(cambios).length > 0;
+  const d = diasDesde(obra['Última Actualización']);
+
+  const guardar = async () => {
+    setGuardando(true);
+    try {
+      const r = await postApi<{ row?: Obra }>({ action: 'editObra', id: txt(obra, 'ID'), updates: cambios });
+      if (r.status !== 'success') throw new Error(mensajeServidor(r.message));
+      onGuardada(r.data?.row || { ...obra, ...cambios });
+      avisar(hayCambios ? 'Cambios guardados y visita registrada.' : 'Visita registrada.');
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : 'No se pudo guardar.', true);
+    }
+    setGuardando(false);
+  };
+
+  return (
+    <>
+      <button className="btn-link back" onClick={onVolver}>‹ Volver a la lista</button>
+      <div className="sheet sheet-head">
+        <div className="company">{txt(obra, 'Empresa')}</div>
+        <h1 className="rc-title">{txt(obra, 'Obra / PDV') || 'Sin nombre'}</h1>
+        <div className="meta">
+          <span>Código {txt(obra, 'ID')}</span>
+          <span>{[txt(obra, 'Dirección'), txt(obra, 'Comuna')].filter(Boolean).join(', ')}</span>
+          {usuario.rol !== 'vendedor' && <span>{txt(obra, 'Vendedor')}</span>}
+        </div>
+        <p className={`fresh ${claseDias(d)}`} style={{ margin: '6px 0 12px' }}>
+          {d === null ? 'Nunca se ha actualizado' : `Última actualización: ${textoDias(d).toLowerCase()}`}
+        </p>
+      </div>
+
+      <div className="sheet">
+        {esObra && (
+          <div className="q">
+            <p className="q-title">¿En qué etapa está la obra?</p>
+            <BarraEtapas estado={txt(datos, 'Estado de Obra')} onCambio={v => set('Estado de Obra', v)} />
+          </div>
+        )}
+        <div className="q">
+          <p className="q-title">¿Nos compran?</p>
+          <Chips etiqueta="¿Nos compran?" opciones={['Sí', 'No']} valor={txt(datos, 'Les Vendemos?')} onCambio={v => set('Les Vendemos?', v)} />
+        </div>
+        <div className="q">
+          <label className="field">
+            <span>Próximos pasos</span>
+            <textarea className="textarea" value={txt(datos, 'Próximos Pasos')} placeholder="Qué quedó pendiente y para cuándo"
+              onChange={e => set('Próximos Pasos', e.target.value)} />
+          </label>
+          <label className="field">
+            <span>Contacto <small>nombre, cargo, teléfono o correo</small></span>
+            <textarea className="textarea" value={txt(datos, 'Contacto')} onChange={e => set('Contacto', e.target.value)} />
+          </label>
+        </div>
+        <details className="more">
+          <summary>Datos de la obra</summary>
+          <label className="field"><span>Nombre de la obra o punto de venta</span>
+            <input className="input" value={txt(datos, 'Obra / PDV')} onChange={e => set('Obra / PDV', e.target.value)} /></label>
+          <label className="field"><span>Dirección</span>
+            <input className="input" value={txt(datos, 'Dirección')} onChange={e => set('Dirección', e.target.value)} /></label>
+          <label className="field"><span>RUT de la empresa</span>
+            <input className="input" value={txt(datos, 'Rut Empresa')} onChange={e => set('Rut Empresa', e.target.value)} /></label>
+          {esObra && <>
+            <div className="field"><span>Tipo de construcción</span>
+              <Chips chico etiqueta="Tipo de construcción" opciones={tipoConstruccionOptions.filter(t => t !== 'No Aplica')}
+                valor={txt(datos, 'Tipo Construcción')} onCambio={v => set('Tipo Construcción', v)} /></div>
+            <label className="field"><span>N° de pisos</span>
+              <input className="input" inputMode="numeric" value={txt(datos, 'Pisos')} onChange={e => set('Pisos', e.target.value)} /></label>
+          </>}
+          <label className="field"><span>Descripción</span>
+            <textarea className="textarea" value={txt(datos, 'Descripción de la obra o PDV')} onChange={e => set('Descripción de la obra o PDV', e.target.value)} /></label>
+          {txt(obra, 'Acciones Última Reunion') && (
+            <p className="q-help">Acciones de la última reunión: {txt(obra, 'Acciones Última Reunion')}</p>
+          )}
+        </details>
+      </div>
+
+      <div className="dock">
+        <div className="dock-inner">
+          <span className="dock-note">{hayCambios ? `${Object.keys(cambios).length} cambio(s) sin guardar` : 'Sin cambios'}</span>
+          <button className="btn btn-primary" onClick={guardar} disabled={guardando}>
+            {guardando ? 'Guardando…' : hayCambios ? 'Guardar y registrar visita' : 'Registrar visita'}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ---------- Pantalla 3: agregar al radar (3 pasos) ----------
+const nuevaVacia = (): Record<string, string> => ({
+  'Empresa': '', 'Rut Empresa': '', 'Canal': '', 'Vendedor': '', 'Obra / PDV': '', 'Comuna': '', 'Región': '',
+  'Dirección': '', 'Estado de Obra': '', 'Tipo Construcción': '', 'Les Vendemos?': '', 'Próximos Pasos': '',
+  'Contacto': '', 'Pisos': '', 'Descripción de la obra o PDV': '',
+});
+
+function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada, avisar }: {
+  usuario: Usuario; obras: Obra[]; clientes: Cliente[]; textoInicial: string;
+  onVolver: () => void; onCreada: (o: Obra) => void; avisar: (m: string, error?: boolean) => void;
+}) {
+  const [paso, setPaso] = useState(1);
+  const [d, setD] = useState<Record<string, string>>(() => ({ ...nuevaVacia(), 'Empresa': textoInicial, 'Vendedor': usuario.rol === 'jefatura' ? '' : usuario.vendedor }));
+  const [comunaTexto, setComunaTexto] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [creada, setCreada] = useState<Obra | null>(null);
+  const [autoNota, setAutoNota] = useState('');
+  const set = (k: string, v: string) => setD(x => ({ ...x, [k]: v }));
+  const asignables = usuario.rol === 'jefatura' ? vendedorOptions : [usuario.vendedor, ...(usuario.equipo || [])];
+  const esObra = esCanalDeObra(d['Canal']);
+  const arriba = useRef<HTMLDivElement>(null);
+  useEffect(() => { arriba.current?.scrollIntoView({ block: 'start' }); }, [paso]);
+
+  // Empresas conocidas: las de la hoja Clientes y las de sus propias obras.
+  const empresas = useMemo(() => {
+    const m = new Map<string, string>();
+    clientes.forEach(c => c.empresa && m.set(normalizar(c.empresa), `${c.empresa}|${c.rut || ''}`));
+    obras.forEach(o => { const e = txt(o, 'Empresa'); if (e && !m.has(normalizar(e))) m.set(normalizar(e), `${e}|${txt(o, 'Rut Empresa')}`); });
+    return [...m.values()].map(v => { const [label, rut] = v.split('|'); return { label, sub: rut ? `RUT ${rut}` : undefined, rut }; });
+  }, [clientes, obras]);
+  const sugerenciasEmpresa = useMemo(() => {
+    const q = normalizar(d['Empresa']);
+    return q.length < 2 ? [] : empresas.filter(e => normalizar(e.label).includes(q));
+  }, [empresas, d]);
+  const sugerenciasComuna = useMemo(() => {
+    const q = normalizar(comunaTexto);
+    return q.length < 2 ? [] : todasLasComunas.filter(c => normalizar(c.comuna).includes(q))
+      .sort((a, b) => Number(!normalizar(a.comuna).startsWith(q)) - Number(!normalizar(b.comuna).startsWith(q)))
+      .map(c => ({ label: c.comuna, sub: c.region }));
+  }, [comunaTexto]);
+
+  const elegirEmpresa = (label: string) => {
+    const e = empresas.find(x => x.label === label);
+    // El canal se copia de otras obras de la misma empresa, si existen.
+    const otra = obras.find(o => normalizar(txt(o, 'Empresa')) === normalizar(label) && txt(o, 'Canal'));
+    setD(x => ({ ...x, 'Empresa': label, 'Rut Empresa': e?.rut || x['Rut Empresa'], 'Canal': x['Canal'] || txt(otra, 'Canal') }));
+    const notas = [e?.rut && 'RUT', otra && 'canal'].filter(Boolean);
+    setAutoNota(notas.length ? `Completamos ${notas.join(' y ')} con lo que ya está en el radar.` : '');
+  };
+  const elegirComuna = (comuna: string) => {
+    setComunaTexto(comuna);
+    setD(x => ({ ...x, 'Comuna': comuna, 'Región': regionDeComuna(comuna) }));
+  };
+
+  const paso1Listo = d['Empresa'].trim() && d['Canal'] && d['Vendedor'];
+  const paso2Listo = d['Obra / PDV'].trim() && d['Comuna'] && d['Región'];
+
+  const guardar = async () => {
+    if (!paso1Listo) { setPaso(1); return; }
+    if (!paso2Listo) { setPaso(2); return; }
+    setGuardando(true);
+    const data = { ...d };
+    if (!esObra) { data['Estado de Obra'] = data['Estado de Obra'] || 'No Aplica'; data['Tipo Construcción'] = data['Tipo Construcción'] || 'No Aplica'; }
+    else if (!data['Estado de Obra']) data['Estado de Obra'] = 'Sin Información';
+    try {
+      const r = await postApi<Obra>({ action: 'createNewObra', data });
+      if (r.status !== 'success' || !r.data) throw new Error(mensajeServidor(r.message));
+      onCreada(r.data);
+      setCreada(r.data);
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : 'No se pudo agregar.', true);
+    }
+    setGuardando(false);
+  };
+
+  if (creada) {
+    return (
+      <div className="sheet done-box">
+        <p>Quedó agregada al radar con el código</p>
+        <span className="code">{txt(creada, 'ID')}</span>
+        <p style={{ color: 'var(--muted)' }}>{txt(creada, 'Obra / PDV')}, {txt(creada, 'Empresa')}</p>
+        <div className="chips" style={{ justifyContent: 'center', marginTop: 16 }}>
+          <button className="btn btn-primary" onClick={() => { setCreada(null); setPaso(1); setD({ ...nuevaVacia(), 'Vendedor': usuario.rol === 'jefatura' ? '' : usuario.vendedor }); setComunaTexto(''); setAutoNota(''); }}>Agregar otra</button>
+          <button className="btn btn-ghost" onClick={onVolver}>Volver a la lista</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={arriba}>
+      <button className="btn-link back" onClick={onVolver}>‹ Cancelar</button>
+      <h1 className="rc-title">Agregar al radar</h1>
+      <p className="rc-sub">Una obra nueva o un punto de venta (ferretería, distribuidor, casa matriz).</p>
+      <div className="steps" aria-label={`Paso ${paso} de 3`}>
+        {['Empresa', 'Ubicación', 'Detalles (opcional)'].map((s, i) => (
+          <div key={s} className={i + 1 === paso ? 'now' : i + 1 < paso ? 'done' : ''}>{s}</div>
+        ))}
+      </div>
+
+      {paso === 1 && (
+        <div className="sheet">
+          <div className="q">
+            <label className="field" htmlFor="empresa"><span>Empresa</span></label>
+            <Autocompletar id="empresa" valor={d['Empresa']} placeholder="Escribe el nombre de la empresa"
+              onTexto={v => set('Empresa', v)} onElegir={o => elegirEmpresa(o.label)} opciones={sugerenciasEmpresa} />
+            {autoNota && <p className="auto-note">{autoNota}</p>}
+            <label className="field" style={{ marginTop: 14 }}><span>RUT de la empresa <small>si lo sabes</small></span>
+              <input className="input" value={d['Rut Empresa']} placeholder="76.123.456-7" onChange={e => set('Rut Empresa', e.target.value)} /></label>
+          </div>
+          <div className="q">
+            <p className="q-title">¿Qué tipo de cliente es?</p>
+            <Chips etiqueta="Canal" opciones={canalOptions} valor={d['Canal']} onCambio={v => set('Canal', v)} />
+          </div>
+          {usuario.rol !== 'vendedor' && (
+            <div className="q">
+              <p className="q-title">¿A quién se asigna?</p>
+              <Chips etiqueta="Vendedor" opciones={asignables} valor={d['Vendedor']} onCambio={v => set('Vendedor', v)} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {paso === 2 && (
+        <div className="sheet">
+          <div className="q">
+            <label className="field"><span>{esObra ? 'Nombre de la obra' : 'Nombre del punto de venta'}</span>
+              <input className="input" value={d['Obra / PDV']} autoFocus
+                placeholder={esObra ? 'Ej.: Edificio Los Almendros' : 'Ej.: Casa matriz, Sucursal Maipú'}
+                onChange={e => set('Obra / PDV', e.target.value)} /></label>
+            <label className="field" htmlFor="comuna"><span>Comuna</span></label>
+            <Autocompletar id="comuna" valor={comunaTexto} placeholder="Escribe la comuna"
+              onTexto={v => { setComunaTexto(v); setD(x => ({ ...x, 'Comuna': '', 'Región': '' })); }}
+              onElegir={o => elegirComuna(o.label)} opciones={sugerenciasComuna} />
+            {d['Región'] && <p className="auto-note">Región: {d['Región']}</p>}
+            <label className="field" style={{ marginTop: 14 }}><span>Dirección</span>
+              <input className="input" value={d['Dirección']} placeholder="Calle y número" onChange={e => set('Dirección', e.target.value)} /></label>
+          </div>
+          {esObra && (
+            <div className="q">
+              <p className="q-title">¿En qué etapa está?</p>
+              <BarraEtapas estado={d['Estado de Obra']} onCambio={v => set('Estado de Obra', v)} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {paso === 3 && (
+        <div className="sheet">
+          <div className="q">
+            <p className="q-title">¿Nos compran?</p>
+            <Chips etiqueta="¿Nos compran?" opciones={['Sí', 'No']} valor={d['Les Vendemos?']} onCambio={v => set('Les Vendemos?', v)} />
+          </div>
+          {esObra && (
+            <div className="q">
+              <p className="q-title">Tipo de construcción</p>
+              <Chips chico etiqueta="Tipo de construcción" opciones={tipoConstruccionOptions.filter(t => t !== 'No Aplica')}
+                valor={d['Tipo Construcción']} onCambio={v => set('Tipo Construcción', v)} />
+              <label className="field" style={{ marginTop: 14 }}><span>N° de pisos</span>
+                <input className="input" inputMode="numeric" value={d['Pisos']} onChange={e => set('Pisos', e.target.value)} /></label>
+            </div>
+          )}
+          <div className="q">
+            <label className="field"><span>Contacto <small>nombre, cargo, teléfono o correo</small></span>
+              <textarea className="textarea" value={d['Contacto']} onChange={e => set('Contacto', e.target.value)} /></label>
+            <label className="field"><span>Próximos pasos</span>
+              <textarea className="textarea" value={d['Próximos Pasos']} placeholder="Qué quedó pendiente y para cuándo" onChange={e => set('Próximos Pasos', e.target.value)} /></label>
+            <label className="field"><span>Descripción</span>
+              <textarea className="textarea" value={d['Descripción de la obra o PDV']} onChange={e => set('Descripción de la obra o PDV', e.target.value)} /></label>
+          </div>
+        </div>
+      )}
+
+      <div className="dock">
+        <div className="dock-inner">
+          {paso > 1
+            ? <button className="btn btn-ghost" onClick={() => setPaso(p => p - 1)}>Atrás</button>
+            : <span className="dock-note">Paso 1 de 3</span>}
+          {paso === 1 && <button className="btn btn-dark" disabled={!paso1Listo} onClick={() => setPaso(2)}>Siguiente</button>}
+          {paso === 2 && (
+            <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button className="btn-link" disabled={!paso2Listo} onClick={() => setPaso(3)}>Más detalles</button>
+              <button className="btn btn-primary" disabled={!paso2Listo || guardando} onClick={guardar}>{guardando ? 'Agregando…' : 'Agregar al radar'}</button>
+            </span>
+          )}
+          {paso === 3 && <button className="btn btn-primary" disabled={guardando} onClick={guardar}>{guardando ? 'Agregando…' : 'Agregar al radar'}</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Radar: estado compartido entre pantallas ----------
+function Radar({ usuario }: { usuario: Usuario }) {
+  const [obras, setObras] = useState<Obra[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
+  const [vista, setVista] = useState<{ tipo: 'lista' } | { tipo: 'obra'; id: string } | { tipo: 'nueva'; texto: string }>({ tipo: 'lista' });
+  const [toast, setToast] = useState<{ m: string; error?: boolean } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await postApi<Obra[]>({ action: 'getAllData' });
+        if (r.status !== 'success') throw new Error(mensajeServidor(r.message));
+        setObras(r.data || []);
+      } catch (e) {
+        setError(e instanceof Error ? `No se pudieron cargar las obras: ${e.message}` : 'No se pudieron cargar las obras.');
+      }
+      setCargando(false);
+    })();
+    postApi<Cliente[]>({ action: 'getClientList' }).then(r => { if (r.status === 'success') setClientes(r.data || []); }).catch(() => {});
+  }, []);
+
+  useEffect(() => { window.scrollTo(0, 0); }, [vista.tipo]);
+  const avisar = (m: string, err?: boolean) => { setToast({ m, error: err }); setTimeout(() => setToast(null), err ? 7000 : 3500); };
+  const obraAbierta = vista.tipo === 'obra' ? obras.find(o => txt(o, 'ID') === vista.id) : null;
+
+  return (
+    <>
+      {vista.tipo === 'lista' && (
+        <MisObras usuario={usuario} obras={obras} cargando={cargando} error={error}
+          onAbrir={o => setVista({ tipo: 'obra', id: txt(o, 'ID') })} onNueva={t => setVista({ tipo: 'nueva', texto: t })} />
+      )}
+      {vista.tipo === 'obra' && obraAbierta && (
+        <FichaObra key={txt(obraAbierta, 'ID') + txt(obraAbierta, 'Última Actualización')} usuario={usuario} obra={obraAbierta} avisar={avisar}
+          onVolver={() => setVista({ tipo: 'lista' })}
+          onGuardada={o => setObras(prev => prev.map(x => txt(x, 'ID') === txt(o, 'ID') ? o : x))} />
+      )}
+      {vista.tipo === 'nueva' && (
+        <NuevaObra usuario={usuario} obras={obras} clientes={clientes} textoInicial={vista.texto} avisar={avisar}
+          onVolver={() => setVista({ tipo: 'lista' })} onCreada={o => setObras(prev => [...prev, o])} />
+      )}
+      {toast && <div className={`toast${toast.error ? ' error' : ''}`} role="status">{toast.m}</div>}
+    </>
+  );
+}
+
+// ---------- Sesión ----------
 export default function App() {
   const [estado, setEstado] = useState<'cargando' | 'fuera' | 'dentro'>('cargando');
   const [usuario, setUsuario] = useState<Usuario | null>(null);
@@ -798,13 +595,9 @@ export default function App() {
     try {
       const r = await postApi<Usuario>({ action: 'whoami' });
       if (r.status === 'success' && r.data && r.data.vendedor) {
-        setAviso('');
-        setUsuario(r.data);
-        setEstado('dentro');
+        setAviso(''); setUsuario(r.data); setEstado('dentro');
       } else {
-        setAviso(r.status === 'success'
-          ? 'Tu cuenta aún no está habilitada en el radar. Pide a jefatura que te agregue.'
-          : mensajeServidor(r.message));
+        setAviso(r.status === 'success' ? 'Tu cuenta aún no está habilitada en el radar. Pide a jefatura que te agregue.' : mensajeServidor(r.message));
         await signOut(auth);
       }
     } catch (e) {
@@ -813,25 +606,25 @@ export default function App() {
     }
   }), []);
 
-  return (
-    <div className="container">
-      <GlobalStyles />
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', marginTop: '2rem' }}>
-        <img src="/logo-natstone.png" alt="NatStone Logo" style={{ maxWidth: '250px', height: 'auto' }} />
-      </div>
-      <h1>RADAR COMERCIAL</h1>
+  if (estado === 'fuera') return <Login aviso={aviso} />;
 
-      {estado === 'cargando' && <div className="loader">Cargando...</div>}
-      {estado === 'fuera' && <Login aviso={aviso} />}
-      {estado === 'dentro' && usuario && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem', marginBottom: '1rem', fontSize: '0.9rem' }}>
-            <span>{usuario.vendedor}{usuario.rol === 'jefatura' ? ' · Jefatura' : usuario.rol === 'jefe zonal' ? ' · Jefe zonal' : ''}</span>
-            <button className="secondary-button" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => signOut(auth)}>Cerrar sesión</button>
-          </div>
-          <Radar key={usuario.correo} usuario={usuario} />
-        </>
-      )}
-    </div>
+  return (
+    <>
+      <header className="rc-top">
+        <div className="rc-top-inner">
+          <img src="/logo-natstone.png" alt="Natstone" />
+          {usuario && (
+            <div className="rc-who">
+              <span><strong>{usuario.vendedor}</strong>{usuario.rol === 'jefatura' ? 'Jefatura' : usuario.rol === 'jefe zonal' ? 'Jefe zonal' : 'Radar Comercial'}</span>
+              <button className="btn btn-ghost btn-small" onClick={() => signOut(auth)}>Salir</button>
+            </div>
+          )}
+        </div>
+      </header>
+      <main className="rc-main">
+        {estado === 'cargando' && <div className="loading">Cargando…</div>}
+        {estado === 'dentro' && usuario && <Radar key={usuario.correo} usuario={usuario} />}
+      </main>
+    </>
   );
 }
