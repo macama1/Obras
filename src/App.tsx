@@ -173,7 +173,7 @@ function MisObras({ usuario, obras, cargando, error, onAbrir, onNueva }: {
             <input type="search" value={busqueda} onChange={e => { setBusqueda(e.target.value); setLimite(40); }}
               placeholder="Buscar obra para actualizarla" aria-label="Buscar obra para actualizarla" disabled={cargando} />
           </label>
-          <p className="rc-search-hint">Por empresa, nombre de obra, comuna o código.</p>
+          <p className="rc-search-hint">Por empresa, nombre de obra, comuna o dirección.</p>
         </div>
         <button className="btn btn-primary" onClick={() => onNueva(busqueda)} disabled={cargando}>
           + Agregar al radar
@@ -219,7 +219,7 @@ function MisObras({ usuario, obras, cargando, error, onAbrir, onNueva }: {
                     </span>
                     <span className="rc-row-side"><span className={`fresh ${claseDias(d)}`}>{textoDias(d)}</span></span>
                     <span className="rc-row-meta">
-                      <span>{[txt(o, 'Comuna'), txt(o, 'ID')].filter(Boolean).join(', ')}</span>
+                      <span>{[txt(o, 'Comuna'), usuario.rol === 'jefatura' ? txt(o, 'ID') : ''].filter(Boolean).join(', ')}</span>
                       {veVarias && <span>{txt(o, 'Vendedor')}</span>}
                       <MiniEtapas estado={txt(o, 'Estado de Obra')} />
                     </span>
@@ -278,7 +278,7 @@ function FichaObra({ usuario, obra, onVolver, onGuardada, avisar }: {
         <div className="company">{txt(obra, 'Empresa')}</div>
         <h1 className="rc-title">{txt(obra, 'Obra / PDV') || 'Sin nombre'}</h1>
         <div className="meta">
-          <span>Código {txt(obra, 'ID')}</span>
+          {usuario.rol === 'jefatura' && <span>Código {txt(obra, 'ID')}</span>}
           <span>{[txt(obra, 'Dirección'), txt(obra, 'Comuna')].filter(Boolean).join(', ')}</span>
           {usuario.rol !== 'vendedor' && <span>{txt(obra, 'Vendedor')}</span>}
         </div>
@@ -321,7 +321,7 @@ function FichaObra({ usuario, obra, onVolver, onGuardada, avisar }: {
             <div className="field"><span>Tipo de construcción</span>
               <Chips chico etiqueta="Tipo de construcción" opciones={tipoConstruccionOptions.filter(t => t !== 'No Aplica')}
                 valor={txt(datos, 'Tipo Construcción')} onCambio={v => set('Tipo Construcción', v)} /></div>
-            <label className="field"><span>N° de pisos</span>
+            <label className="field"><span>N° de pisos / casas</span>
               <input className="input" inputMode="numeric" value={txt(datos, 'Pisos')} onChange={e => set('Pisos', e.target.value)} /></label>
           </>}
           <label className="field"><span>Descripción</span>
@@ -424,8 +424,8 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
   if (creada) {
     return (
       <div className="sheet done-box">
-        <p>Quedó agregada al radar con el código</p>
-        <span className="code">{txt(creada, 'ID')}</span>
+        <p>Quedó agregada al radar</p>
+        {usuario.rol === 'jefatura' && <span className="code">{txt(creada, 'ID')}</span>}
         <p style={{ color: 'var(--muted)' }}>{txt(creada, 'Obra / PDV')}, {txt(creada, 'Empresa')}</p>
         <div className="chips" style={{ justifyContent: 'center', marginTop: 16 }}>
           <button className="btn btn-primary" onClick={() => { setCreada(null); setPaso(1); setD({ ...nuevaVacia(), 'Vendedor': usuario.rol === 'jefatura' ? '' : usuario.vendedor }); setComunaTexto(''); setAutoNota(''); }}>Agregar otra</button>
@@ -511,7 +511,7 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
               <p className="q-title">Tipo de construcción</p>
               <Chips chico etiqueta="Tipo de construcción" opciones={tipoConstruccionOptions.filter(t => t !== 'No Aplica')}
                 valor={d['Tipo Construcción']} onCambio={v => set('Tipo Construcción', v)} />
-              <label className="field" style={{ marginTop: 14 }}><span>N° de pisos</span>
+              <label className="field" style={{ marginTop: 14 }}><span>N° de pisos / casas</span>
                 <input className="input" inputMode="numeric" value={d['Pisos']} onChange={e => set('Pisos', e.target.value)} /></label>
             </div>
           )}
