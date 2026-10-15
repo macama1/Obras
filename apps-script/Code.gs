@@ -103,6 +103,13 @@ function puedeVerFila_(fila, colVendedor, usuario) {
   return esDelVendedor_(fila[colVendedor], usuario);
 }
 
+// Ejecutar UNA vez a mano desde el editor para dar el permiso de conexión externa
+// (el script lo necesita para verificar las sesiones con Google).
+function autorizarConexion() {
+  UrlFetchApp.fetch('https://www.googleapis.com/discovery/v1/apis', { muteHttpExceptions: true });
+  Logger.log('Permiso de conexión listo.');
+}
+
 // Ejecutar UNA vez a mano desde el editor: crea la hoja Usuarios con los vendedores del radar.
 // Después completa la columna Correo (el mismo correo de la intranet) y pon "jefatura" en tu fila.
 function crearHojaUsuarios() {
