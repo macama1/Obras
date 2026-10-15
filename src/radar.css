@@ -162,6 +162,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .textarea { min-height: 84px; resize: vertical; }
 .input:focus, .textarea:focus { border-color: var(--ink); outline: 2px solid var(--amber); outline-offset: 0; }
 .auto-note { font-size: 14px; color: var(--ok); margin-top: 6px; }
+.auto-note.aviso { color: var(--bad); }
+.opcional-nota { font-size: 14px; color: var(--muted); margin: 0 0 14px; padding: 10px 12px; background: var(--concrete, #f3f4f2); border-radius: 8px; }
 
 details.more { border-top: 1px solid var(--line); padding: 4px 0 8px; }
 details.more summary { cursor: pointer; font-weight: 600; padding: 12px 0; list-style: none; display: flex; align-items: center; gap: 8px; }

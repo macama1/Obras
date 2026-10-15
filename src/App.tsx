@@ -345,6 +345,8 @@ function FichaObra({ usuario, obra, onVolver, onGuardada, avisar }: {
 }
 
 // ---------- Pantalla 3: agregar al radar (3 pasos) ----------
+// RUT chileno: 7 u 8 dígitos (con o sin puntos), guion opcional y dígito verificador.
+const pareceRut = (v: string) => /^\d{1,2}\.?\d{3}\.?\d{3}-?[\dkK]$/.test(v.trim());
 const nuevaVacia = (): Record<string, string> => ({
   'Empresa': '', 'Rut Empresa': '', 'Canal': '', 'Vendedor': '', 'Obra / PDV': '', 'Comuna': '', 'Región': '',
   'Dirección': '', 'Estado de Obra': '', 'Tipo Construcción': '', 'Les Vendemos?': '', 'Próximos Pasos': '',
@@ -390,7 +392,7 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
     // El canal se copia de otras obras de la misma empresa, si existen.
     const otra = obras.find(o => normalizar(txt(o, 'Empresa')) === normalizar(label) && txt(o, 'Canal'));
     setD(x => ({ ...x, 'Empresa': label, 'Rut Empresa': e?.rut || x['Rut Empresa'], 'Canal': x['Canal'] || txt(otra, 'Canal') }));
-    const notas = [e?.rut && 'RUT', otra && 'canal'].filter(Boolean);
+    const notas = [otra && 'el tipo de cliente', e?.rut && 'el RUT (lo ves en Más detalles)'].filter(Boolean);
     setAutoNota(notas.length ? `Completamos ${notas.join(' y ')} con lo que ya está en el radar.` : '');
   };
   const elegirComuna = (comuna: string) => {
@@ -439,7 +441,7 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
       <h1 className="rc-title">Agregar al radar</h1>
       <p className="rc-sub">Una obra nueva o un punto de venta (ferretería, distribuidor, casa matriz).</p>
       <div className="steps" aria-label={`Paso ${paso} de 3`}>
-        {['Empresa', 'Ubicación', 'Detalles (opcional)'].map((s, i) => (
+        {['Empresa', 'Ubicación', 'Más detalles (opcional)'].map((s, i) => (
           <div key={s} className={i + 1 === paso ? 'now' : i + 1 < paso ? 'done' : ''}>{s}</div>
         ))}
       </div>
@@ -451,8 +453,6 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
             <Autocompletar id="empresa" valor={d['Empresa']} placeholder="Escribe el nombre de la empresa"
               onTexto={v => set('Empresa', v)} onElegir={o => elegirEmpresa(o.label)} opciones={sugerenciasEmpresa} />
             {autoNota && <p className="auto-note">{autoNota}</p>}
-            <label className="field" style={{ marginTop: 14 }}><span>RUT de la empresa <small>si lo sabes</small></span>
-              <input className="input" value={d['Rut Empresa']} placeholder="76.123.456-7" onChange={e => set('Rut Empresa', e.target.value)} /></label>
           </div>
           <div className="q">
             <p className="q-title">¿Qué tipo de cliente es?</p>
@@ -493,6 +493,15 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
 
       {paso === 3 && (
         <div className="sheet">
+          <p className="opcional-nota">Todo lo de este paso es opcional. Puedes agregar al radar ahora y completarlo después.</p>
+          <div className="q">
+            <label className="field"><span>RUT de la empresa <small>dato legal, necesario para venderle</small></span>
+              <input className="input" value={d['Rut Empresa']} placeholder="76.123.456-7" inputMode="text"
+                onChange={e => set('Rut Empresa', e.target.value)} /></label>
+            {d['Rut Empresa'].trim() && !pareceRut(d['Rut Empresa']) && (
+              <p className="auto-note aviso">No parece un RUT. Debe ser como 76.123.456-7.</p>
+            )}
+          </div>
           <div className="q">
             <p className="q-title">¿Nos compran?</p>
             <Chips etiqueta="¿Nos compran?" opciones={['Sí', 'No']} valor={d['Les Vendemos?']} onCambio={v => set('Les Vendemos?', v)} />
@@ -523,12 +532,7 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
             ? <button className="btn btn-ghost" onClick={() => setPaso(p => p - 1)}>Atrás</button>
             : <span className="dock-note">Paso 1 de 3</span>}
           {paso === 1 && <button className="btn btn-dark" disabled={!paso1Listo} onClick={() => setPaso(2)}>Siguiente</button>}
-          {paso === 2 && (
-            <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <button className="btn-link" disabled={!paso2Listo} onClick={() => setPaso(3)}>Más detalles</button>
-              <button className="btn btn-primary" disabled={!paso2Listo || guardando} onClick={guardar}>{guardando ? 'Agregando…' : 'Agregar al radar'}</button>
-            </span>
-          )}
+          {paso === 2 && <button className="btn btn-dark" disabled={!paso2Listo} onClick={() => setPaso(3)}>Siguiente</button>}
           {paso === 3 && <button className="btn btn-primary" disabled={guardando} onClick={guardar}>{guardando ? 'Agregando…' : 'Agregar al radar'}</button>}
         </div>
       </div>
