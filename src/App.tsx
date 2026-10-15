@@ -807,8 +807,8 @@ export default function App() {
           : mensajeServidor(r.message));
         await signOut(auth);
       }
-    } catch {
-      setAviso('No se pudo conectar con el radar. Revisa tu conexión.');
+    } catch (e) {
+      setAviso(`No se pudo conectar con el radar (${e instanceof Error ? e.message : 'error desconocido'}). Intenta de nuevo en unos segundos.`);
       await signOut(auth);
     }
   }), []);
