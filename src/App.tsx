@@ -616,10 +616,10 @@ export default function App() {
     <>
       <header className="rc-top">
         <div className="rc-top-inner">
-          <img src="/logo-natstone.png" alt="Natstone" />
+          <div className="marcas"><img src="/logo-natstone-h.png" alt="Natstone" className="m-nat" /><span className="m-sep" aria-hidden="true" /><img src="/logo-pietra.png" alt="Pietra" className="m-pie" /></div>
           {usuario && (
             <div className="rc-who">
-              <span><strong>{usuario.vendedor}</strong>{usuario.rol === 'jefatura' ? 'Jefatura' : usuario.rol === 'jefe zonal' ? 'Jefe zonal' : 'Radar Comercial'}</span>
+              <span><strong>{usuario.vendedor}</strong><span className="rol">{usuario.rol === 'jefatura' ? 'Jefatura' : usuario.rol === 'jefe zonal' ? 'Jefe zonal' : 'Radar Comercial'}</span></span>
               <button className="btn btn-ghost btn-small" onClick={() => signOut(auth)}>Salir</button>
             </div>
           )}

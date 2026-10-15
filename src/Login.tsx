@@ -33,7 +33,7 @@ export default function Login({ aviso }: { aviso?: string }) {
 
   return (
     <main className="login">
-      <img src="/logo-natstone.png" alt="Natstone" />
+      <div className="marcas"><img src="/logo-natstone-h.png" alt="Natstone" className="m-nat" /><span className="m-sep" aria-hidden="true" /><img src="/logo-pietra.png" alt="Pietra" className="m-pie" /></div>
       <h1 className="rc-title">Radar Comercial</h1>
       <p className="rc-sub">Entra con el mismo correo y contraseña de la intranet.</p>
       {aviso && <p className="notice">{aviso}</p>}
