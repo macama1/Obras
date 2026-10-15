@@ -14,6 +14,20 @@ const COL_ULTIMA_ACTUALIZACION = 11; // Columna K (Ajusta si cambió)
 
 // Columnas que nunca se pueden sobrescribir desde la app.
 const COLUMNAS_PROTEGIDAS = ['ID', 'Orden'];
+// Columnas que solo jefatura puede cambiar (un vendedor no puede pasarse obras ni cambiar el historial).
+const COLUMNAS_SOLO_JEFATURA = ['Vendedor', 'Historial de ejecutivos'];
+
+// ========= LOGIN (misma cuenta de la intranet, Firebase "intranatstone") =========
+// Clave web pública de Firebase (la misma que usa la intranet en el navegador; no es secreta).
+const FIREBASE_API_KEY = "AIzaSyA00y8ajl1ccpRwo8dRjmEbAj5rw1bT9DY";
+// Hoja con quién es quién: Correo | Vendedor | Rol | Equipo
+//   Rol: "vendedor" (solo sus obras), "jefe zonal" (las suyas y las de su Equipo)
+//        o "jefatura" (todo). Equipo: nombres de vendedores separados por coma.
+const NOMBRE_HOJA_USUARIOS = "Usuarios";
+// Transición: con false, una llamada SIN login sigue funcionando como antes (para no cortar
+// la app mientras se publica). Con login, los permisos se aplican siempre.
+// Cuando todos los vendedores estén en la hoja Usuarios, cámbialo a true y publica una nueva versión.
+const EXIGIR_LOGIN = false;
 
 // =============================================
 
@@ -28,27 +42,139 @@ function mismaRegion(a, b) {
   return x === y || x.startsWith(y + ' ') || y.startsWith(x + ' ');
 }
 
+// ========= USUARIOS Y PERMISOS =========
+
+// Verifica con Google que el token de Firebase es válido y devuelve {correo, vendedor, rol}.
+// Sin token devuelve null. Un token falso o vencido lanza NO_AUTORIZADO.
+function obtenerUsuario_(idToken) {
+  if (!idToken) return null;
+  const cache = CacheService.getScriptCache();
+  const clave = 'tok_' + Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(idToken)));
+  const enCache = cache.get(clave);
+  if (enCache) return JSON.parse(enCache);
+
+  const resp = UrlFetchApp.fetch(
+    'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_API_KEY, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ idToken: String(idToken) }),
+      muteHttpExceptions: true
+    });
+  if (resp.getResponseCode() !== 200) {
+    throw new Error('NO_AUTORIZADO: tu sesión venció o no es válida. Vuelve a iniciar sesión.');
+  }
+  const cuenta = (JSON.parse(resp.getContentText()).users || [])[0];
+  if (!cuenta || !cuenta.email || cuenta.disabled) {
+    throw new Error('NO_AUTORIZADO: cuenta no válida.');
+  }
+  const usuario = buscarUsuarioPorCorreo_(cuenta.email);
+  if (!usuario) {
+    throw new Error('NO_AUTORIZADO: tu correo (' + cuenta.email + ') no está habilitado en el radar. Pide a jefatura que te agregue.');
+  }
+  cache.put(clave, JSON.stringify(usuario), 600); // 10 minutos
+  return usuario;
+}
+
+function buscarUsuarioPorCorreo_(correo) {
+  const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_USUARIOS);
+  if (!hoja || hoja.getLastRow() < 2) return null;
+  const filas = hoja.getRange(2, 1, hoja.getLastRow() - 1, Math.max(4, hoja.getLastColumn())).getValues();
+  const buscado = String(correo).trim().toLowerCase();
+  const fila = filas.find(f => String(f[0]).trim().toLowerCase() === buscado);
+  if (!fila || !String(fila[1]).trim()) return null;
+  const rolTexto = normalizarTexto(fila[2]);
+  const rol = rolTexto === 'jefatura' ? 'jefatura'
+    : (rolTexto === 'jefe zonal' || rolTexto === 'jefe_zonal' || rolTexto === 'jefezonal') ? 'jefe zonal'
+    : 'vendedor';
+  const equipo = rol === 'jefe zonal'
+    ? String(fila[3] || '').split(/[,;\n]/).map(n => n.trim()).filter(Boolean)
+    : [];
+  return { correo: buscado, vendedor: String(fila[1]).trim(), rol: rol, equipo: equipo };
+}
+
+function esJefatura_(usuario) {
+  return !!usuario && usuario.rol === 'jefatura';
+}
+
+// Nombres cuyas obras puede ver y editar: el propio y, si es jefe zonal, los de su equipo.
+// "Andres Pacheco" y "Andrés Pacheco" cuentan como la misma persona.
+function alcance_(usuario) {
+  return [usuario.vendedor].concat(usuario.equipo || []).map(normalizarTexto);
+}
+function estaEnAlcance_(valorVendedor, usuario) {
+  return alcance_(usuario).indexOf(normalizarTexto(valorVendedor)) !== -1;
+}
+
+// Sin login (solo en transición) o jefatura: todo. Jefe zonal: las suyas y las de su equipo.
+// Vendedor: solo las suyas.
+function puedeVerFila_(fila, colVendedor, usuario) {
+  if (!usuario || esJefatura_(usuario)) return true;
+  return estaEnAlcance_(fila[colVendedor], usuario);
+}
+
+// Ejecutar UNA vez a mano desde el editor para dar el permiso de conexión externa
+// (el script lo necesita para verificar las sesiones con Google).
+function autorizarConexion() {
+  UrlFetchApp.fetch('https://www.googleapis.com/discovery/v1/apis', { muteHttpExceptions: true });
+  Logger.log('Permiso de conexión listo.');
+}
+
+// Ejecutar UNA vez a mano desde el editor: crea la hoja Usuarios con los vendedores del radar.
+// Después completa la columna Correo (el mismo correo de la intranet) y pon "jefatura" en tu fila.
+function crearHojaUsuarios() {
+  const libro = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO);
+  if (libro.getSheetByName(NOMBRE_HOJA_USUARIOS)) {
+    throw new Error('La hoja Usuarios ya existe; no se modificó.');
+  }
+  const hojaObras = libro.getSheetByName(NOMBRE_HOJA_MAESTRA);
+  const datos = hojaObras.getDataRange().getValues();
+  const col = datos[0].indexOf('Vendedor');
+  const vistos = {};
+  datos.slice(1).forEach(f => {
+    const nombre = String(f[col] || '').trim();
+    const clave = normalizarTexto(nombre);
+    if (nombre && !vistos[clave] && clave !== 'sin asignar' && clave !== 'sin asignacion') vistos[clave] = nombre;
+  });
+  const hoja = libro.insertSheet(NOMBRE_HOJA_USUARIOS);
+  const filas = [['Correo', 'Vendedor', 'Rol', 'Equipo']]
+    .concat(Object.keys(vistos).sort().map(k => ['', vistos[k], 'vendedor', '']))
+    .concat([['', 'Jefatura', 'jefatura', '']]);
+  hoja.getRange(1, 1, filas.length, 4).setValues(filas);
+  hoja.setFrozenRows(1);
+  hoja.getRange(1, 1, 1, 4).setFontWeight('bold');
+}
+
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
     let result = {};
 
+    const usuario = obtenerUsuario_(payload.idToken);
+    if (!usuario && EXIGIR_LOGIN) {
+      throw new Error('NO_AUTORIZADO: inicia sesión con tu cuenta de la intranet.');
+    }
+
     switch (payload.action) {
+      case 'whoami':
+        result = usuario
+          ? { vendedor: usuario.vendedor, rol: usuario.rol, correo: usuario.correo, equipo: usuario.equipo || [] }
+          : { vendedor: '', rol: 'sin-login', correo: '' };
+        break;
       case 'getAllData':
-        result = getAllData();
+        result = getAllData(usuario);
         break;
       case 'getDataByRegion': // se mantiene para versiones antiguas de la app
-
-        result = getDataByRegion(payload.region);
+        result = getDataByRegion(payload.region, usuario);
         break;
       case 'getClientList':
         result = getClientList();
         break;
       case 'editObra':
-        result = editObra(payload.id, payload.updates);
+        result = editObra(payload.id, payload.updates, usuario);
         break;
       case 'createNewObra':
-        result = createNewObra(payload.data);
+        result = createNewObra(payload.data, usuario);
         break;
       default:
         throw new Error("Acción no reconocida: " + payload.action);
@@ -92,12 +218,14 @@ function getClientList() {
 // --- FUNCIÓN getAllData ---
 // Devuelve todas las obras de una vez. Leer la hoja cuesta lo mismo que antes
 // (getDataByRegion también la leía completa) y la app filtra localmente.
-function getAllData() {
+function getAllData(usuario) {
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
   const datos = hoja.getDataRange().getValues();
   const encabezados = datos.shift();
+  const colVendedor = encabezados.indexOf('Vendedor');
   return datos
     .filter(fila => fila[COL_ID - 1] !== '' && fila[COL_ID - 1] !== null)
+    .filter(fila => puedeVerFila_(fila, colVendedor, usuario))
     .map(fila => filaAObjeto_(encabezados, fila));
 }
 
@@ -110,7 +238,7 @@ function filaAObjeto_(encabezados, fila) {
 }
 
 // --- FUNCIÓN getDataByRegion ---
-function getDataByRegion(region) {
+function getDataByRegion(region, usuario) {
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
   const datos = hoja.getDataRange().getValues();
   const encabezados = datos.shift(); // Quita encabezados
@@ -120,7 +248,9 @@ function getDataByRegion(region) {
     throw new Error("No se encontró la columna 'Región' en la hoja Consolidado.");
   }
 
-  const datosFiltrados = datos.filter(fila => mismaRegion(fila[colRegionIndex], region));
+  const colVendedor = encabezados.indexOf('Vendedor');
+  const datosFiltrados = datos.filter(fila =>
+    mismaRegion(fila[colRegionIndex], region) && puedeVerFila_(fila, colVendedor, usuario));
 
   const datosFormateados = datosFiltrados.map(fila => {
     let objetoFila = {};
@@ -134,33 +264,38 @@ function getDataByRegion(region) {
 }
 
 // --- FUNCIÓN editObra ---
-function editObra(id, updates) {
+function editObra(id, updates, usuario) {
   if (!id) throw new Error("No se proporcionó un ID para editar.");
 
   // Evita que dos vendedores guardando a la vez se pisen la fila o el registro.
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    return editObraSinLock_(id, updates || {});
+    return editObraSinLock_(id, updates || {}, usuario);
   } finally {
     lock.releaseLock();
   }
 }
 
-function editObraSinLock_(id, updates) {
+function editObraSinLock_(id, updates, usuario) {
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
   const datos = hoja.getDataRange().getValues();
   const encabezados = datos[0];
   
   const filaIndex = datos.slice(1).findIndex(fila => String(fila[COL_ID - 1]) === String(id));
 
-  if (filaIndex === -1) throw new Error(`ID ${id} no encontrado.`);
+  // Para un vendedor, una obra ajena responde igual que una inexistente: no revela que existe.
+  const colVendedorFila = encabezados.indexOf('Vendedor');
+  if (filaIndex === -1 || !puedeVerFila_(datos[filaIndex + 1], colVendedorFila, usuario)) {
+    throw new Error(`La obra ${id} no está en tu cartera.`);
+  }
   
   const filaNumeroReal = filaIndex + 2; 
 
   // Actualizar la hoja "Consolidado"
   for (const key in updates) {
     if (COLUMNAS_PROTEGIDAS.indexOf(key) !== -1) continue;
+    if (usuario && !esJefatura_(usuario) && COLUMNAS_SOLO_JEFATURA.indexOf(key) !== -1) continue;
     const colIndex = encabezados.indexOf(key);
     if (colIndex !== -1) {
       hoja.getRange(filaNumeroReal, colIndex + 1).setValue(updates[key]);
@@ -195,7 +330,7 @@ function editObraSinLock_(id, updates) {
       id,
       filaActualizada[colEmpresaIndex],
       filaActualizada[colObraPdvIndex],
-      filaActualizada[colVendedorIndex],
+      usuario ? usuario.vendedor : filaActualizada[colVendedorIndex], // quién registró la visita
       fechaActual,
       comentarios,
       estado // Añadido al registro
@@ -210,23 +345,64 @@ function editObraSinLock_(id, updates) {
 }
 
 // --- FUNCIÓN createNewObra ---
-function createNewObra(data) {
+function createNewObra(data, usuario) {
   // Sin lock, dos altas simultáneas leen el mismo máximo y generan el mismo ID.
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    return createNewObraSinLock_(data || {});
+    return createNewObraSinLock_(data || {}, usuario);
   } finally {
     lock.releaseLock();
   }
 }
 
-function createNewObraSinLock_(data) {
+// Busca una obra ya registrada: mismo RUT (o misma empresa si no hay RUT) y
+// mismo nombre de obra, o misma dirección en la misma comuna.
+function buscarObraRepetida_(datos, encabezados, data) {
+  const c = nombre => encabezados.indexOf(nombre);
+  const rutDe = v => String(v || '').replace(/[^0-9kK]/g, '').toUpperCase();
+  const rut = rutDe(data['Rut Empresa']);
+  const empresa = normalizarTexto(data['Empresa']);
+  const obra = normalizarTexto(data['Obra / PDV']);
+  const dir = normalizarTexto(data['Dirección']);
+  const comuna = normalizarTexto(data['Comuna']);
+  return datos.slice(1).find(f => {
+    const mismoDueno = rut.length >= 7
+      ? rutDe(f[c('Rut Empresa')]) === rut
+      : normalizarTexto(f[c('Empresa')]) === empresa;
+    if (!mismoDueno) return false;
+    const mismaObra = obra && normalizarTexto(f[c('Obra / PDV')]) === obra;
+    const mismaDir = dir && normalizarTexto(f[c('Dirección')]) === dir && normalizarTexto(f[c('Comuna')]) === comuna;
+    return mismaObra || mismaDir;
+  }) || null;
+}
+
+function createNewObraSinLock_(data, usuario) {
+  // Jefatura asigna a cualquiera; un jefe zonal a sí mismo o a su equipo; un vendedor, solo a sí mismo.
+  if (usuario && !esJefatura_(usuario) && !estaEnAlcance_(data['Vendedor'], usuario)) {
+    data['Vendedor'] = usuario.vendedor;
+  }
+
   const obligatorios = ['Empresa', 'Obra / PDV', 'Vendedor', 'Canal', 'Región', 'Comuna'];
   const faltantes = obligatorios.filter(c => !String(data[c] || '').trim());
   if (faltantes.length) throw new Error('Faltan campos obligatorios: ' + faltantes.join(', '));
 
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
+
+  const todo = hoja.getDataRange().getValues();
+  const repetida = buscarObraRepetida_(todo, todo[0], data);
+  if (repetida) {
+    const idRep = repetida[COL_ID - 1];
+    const duenoRep = repetida[todo[0].indexOf('Vendedor')];
+    if (!usuario || esJefatura_(usuario)) {
+      throw new Error(`Esa obra ya existe: ${idRep} (${duenoRep}).`);
+    }
+    if (estaEnAlcance_(duenoRep, usuario)) {
+      throw new Error(`Esa obra ya está registrada: ${idRep} (${duenoRep}).`);
+    }
+    throw new Error(`Esa obra ya está registrada con otro vendedor (${idRep}). Si te corresponde, pide a jefatura que te la asigne.`);
+  }
+
   const todosLosIds = hoja.getRange(2, COL_ID, Math.max(hoja.getLastRow() - 1, 1), 1).getValues().flat();
   
   let maxNumero = 0;
