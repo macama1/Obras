@@ -371,7 +371,7 @@ const mismaRegion = (a: unknown, b: unknown) => {
 interface ObraDetails { [key: string]: any; }
 interface ClientInfo { empresa: string; rut: string; }
 // Quién está usando la app, según la hoja Usuarios del radar.
-interface Usuario { vendedor: string; rol: 'vendedor' | 'jefatura'; correo: string; }
+interface Usuario { vendedor: string; rol: 'vendedor' | 'jefe zonal' | 'jefatura'; correo: string; equipo?: string[]; }
 
 // --- Componente de Autocompletado ---
 const AutocompleteInput = ({ value, onChange, onSuggestionClick, suggestions, placeholder, disabled }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onSuggestionClick: (suggestion: string) => void; suggestions: string[]; placeholder: string; disabled: boolean; }) => {
@@ -428,6 +428,9 @@ const initialNewObraState = {
 
 function Radar({ usuario }: { usuario: Usuario }) {
   const esJefatura = usuario.rol === 'jefatura';
+  // Jefe zonal: puede asignar a sí mismo o a su equipo. Vendedor: solo a sí mismo.
+  const vendedoresAsignables = esJefatura ? vendedorOptions : [usuario.vendedor, ...(usuario.equipo || [])];
+  const muestraVendedor = usuario.rol !== 'vendedor';
   // Un vendedor solo crea obras a su nombre (el servidor también lo obliga).
   const obraVacia = (region = ''): ObraDetails => ({ ...initialNewObraState, 'Región': region, 'Vendedor': esJefatura ? '' : usuario.vendedor });
   // --- Estados ---
@@ -638,7 +641,7 @@ function Radar({ usuario }: { usuario: Usuario }) {
                   <label>Obra / PDV</label>
                   <select value={selectedObraId} onChange={(e) => setSelectedObraId(e.target.value)} disabled={loading || !selectedCompany}>
                     <option value="">-- Seleccione un PdV --</option>
-                    {obras.map(obra => <option key={obra.ID} value={obra.ID}>{obra.ID} - {obra['Obra / PDV']}{obra['Comuna'] ? ` (${obra['Comuna']})` : ''}</option>)}
+                    {obras.map(obra => <option key={obra.ID} value={obra.ID}>{obra.ID} - {obra['Obra / PDV']}{obra['Comuna'] ? ` (${obra['Comuna']})` : ''}{muestraVendedor && obra['Vendedor'] ? ` · ${obra['Vendedor']}` : ''}</option>)}
                   </select>
                 </div>
               </div>
@@ -676,8 +679,8 @@ function Radar({ usuario }: { usuario: Usuario }) {
               </div>
               <div className="form-field"><label>Rut Empresa</label><input type="text" name="Rut Empresa" value={newObraData['Rut Empresa']} onChange={handleNewObraInputChange} /></div>
                 <div className="form-field field-highlight"><label>Obra / PDV *</label><input type="text" name="Obra / PDV" value={newObraData['Obra / PDV']} onChange={handleNewObraInputChange} /></div>
-                {esJefatura
-                  ? <div className="form-field"><label>Vendedor *</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedorOptions.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
+                {vendedoresAsignables.length > 1
+                  ? <div className="form-field"><label>Vendedor *</label><select name="Vendedor" value={newObraData['Vendedor']} onChange={handleNewObraInputChange}><option value="">-- Asignar Vendedor --</option>{vendedoresAsignables.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
                   : <div className="form-field"><label>Vendedor</label><input type="text" value={usuario.vendedor} disabled /></div>}
                 <div className="form-field"><label>Canal *</label><select name="Canal" value={newObraData['Canal']} onChange={handleNewObraInputChange}><option value="">-- Elija un canal --</option>{canalOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
               
@@ -823,7 +826,7 @@ export default function App() {
       {estado === 'dentro' && usuario && (
         <>
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem', marginBottom: '1rem', fontSize: '0.9rem' }}>
-            <span>{usuario.vendedor}{usuario.rol === 'jefatura' ? ' · Jefatura' : ''}</span>
+            <span>{usuario.vendedor}{usuario.rol === 'jefatura' ? ' · Jefatura' : usuario.rol === 'jefe zonal' ? ' · Jefe zonal' : ''}</span>
             <button className="secondary-button" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => signOut(auth)}>Cerrar sesión</button>
           </div>
           <Radar key={usuario.correo} usuario={usuario} />

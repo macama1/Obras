@@ -20,7 +20,9 @@ const COLUMNAS_SOLO_JEFATURA = ['Vendedor', 'Historial de ejecutivos'];
 // ========= LOGIN (misma cuenta de la intranet, Firebase "intranatstone") =========
 // Clave web pública de Firebase (la misma que usa la intranet en el navegador; no es secreta).
 const FIREBASE_API_KEY = "AIzaSyA00y8ajl1ccpRwo8dRjmEbAj5rw1bT9DY";
-// Hoja con quién es quién: Correo | Vendedor | Rol ("vendedor" o "jefatura").
+// Hoja con quién es quién: Correo | Vendedor | Rol | Equipo
+//   Rol: "vendedor" (solo sus obras), "jefe zonal" (las suyas y las de su Equipo)
+//        o "jefatura" (todo). Equipo: nombres de vendedores separados por coma.
 const NOMBRE_HOJA_USUARIOS = "Usuarios";
 // Transición: con false, una llamada SIN login sigue funcionando como antes (para no cortar
 // la app mientras se publica). Con login, los permisos se aplican siempre.
@@ -77,30 +79,38 @@ function obtenerUsuario_(idToken) {
 function buscarUsuarioPorCorreo_(correo) {
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_USUARIOS);
   if (!hoja || hoja.getLastRow() < 2) return null;
-  const filas = hoja.getRange(2, 1, hoja.getLastRow() - 1, 3).getValues();
+  const filas = hoja.getRange(2, 1, hoja.getLastRow() - 1, Math.max(4, hoja.getLastColumn())).getValues();
   const buscado = String(correo).trim().toLowerCase();
   const fila = filas.find(f => String(f[0]).trim().toLowerCase() === buscado);
   if (!fila || !String(fila[1]).trim()) return null;
-  return {
-    correo: buscado,
-    vendedor: String(fila[1]).trim(),
-    rol: normalizarTexto(fila[2]) === 'jefatura' ? 'jefatura' : 'vendedor'
-  };
+  const rolTexto = normalizarTexto(fila[2]);
+  const rol = rolTexto === 'jefatura' ? 'jefatura'
+    : (rolTexto === 'jefe zonal' || rolTexto === 'jefe_zonal' || rolTexto === 'jefezonal') ? 'jefe zonal'
+    : 'vendedor';
+  const equipo = rol === 'jefe zonal'
+    ? String(fila[3] || '').split(/[,;\n]/).map(n => n.trim()).filter(Boolean)
+    : [];
+  return { correo: buscado, vendedor: String(fila[1]).trim(), rol: rol, equipo: equipo };
 }
 
 function esJefatura_(usuario) {
   return !!usuario && usuario.rol === 'jefatura';
 }
 
+// Nombres cuyas obras puede ver y editar: el propio y, si es jefe zonal, los de su equipo.
 // "Andres Pacheco" y "Andrés Pacheco" cuentan como la misma persona.
-function esDelVendedor_(valorVendedor, usuario) {
-  return normalizarTexto(valorVendedor) === normalizarTexto(usuario.vendedor);
+function alcance_(usuario) {
+  return [usuario.vendedor].concat(usuario.equipo || []).map(normalizarTexto);
+}
+function estaEnAlcance_(valorVendedor, usuario) {
+  return alcance_(usuario).indexOf(normalizarTexto(valorVendedor)) !== -1;
 }
 
-// Sin login (solo en transición) o jefatura: todo. Vendedor: solo sus obras.
+// Sin login (solo en transición) o jefatura: todo. Jefe zonal: las suyas y las de su equipo.
+// Vendedor: solo las suyas.
 function puedeVerFila_(fila, colVendedor, usuario) {
   if (!usuario || esJefatura_(usuario)) return true;
-  return esDelVendedor_(fila[colVendedor], usuario);
+  return estaEnAlcance_(fila[colVendedor], usuario);
 }
 
 // Ejecutar UNA vez a mano desde el editor para dar el permiso de conexión externa
@@ -127,12 +137,12 @@ function crearHojaUsuarios() {
     if (nombre && !vistos[clave] && clave !== 'sin asignar' && clave !== 'sin asignacion') vistos[clave] = nombre;
   });
   const hoja = libro.insertSheet(NOMBRE_HOJA_USUARIOS);
-  const filas = [['Correo', 'Vendedor', 'Rol']]
-    .concat(Object.keys(vistos).sort().map(k => ['', vistos[k], 'vendedor']))
-    .concat([['', 'Jefatura', 'jefatura']]);
-  hoja.getRange(1, 1, filas.length, 3).setValues(filas);
+  const filas = [['Correo', 'Vendedor', 'Rol', 'Equipo']]
+    .concat(Object.keys(vistos).sort().map(k => ['', vistos[k], 'vendedor', '']))
+    .concat([['', 'Jefatura', 'jefatura', '']]);
+  hoja.getRange(1, 1, filas.length, 4).setValues(filas);
   hoja.setFrozenRows(1);
-  hoja.getRange(1, 1, 1, 3).setFontWeight('bold');
+  hoja.getRange(1, 1, 1, 4).setFontWeight('bold');
 }
 
 function doPost(e) {
@@ -148,7 +158,7 @@ function doPost(e) {
     switch (payload.action) {
       case 'whoami':
         result = usuario
-          ? { vendedor: usuario.vendedor, rol: usuario.rol, correo: usuario.correo }
+          ? { vendedor: usuario.vendedor, rol: usuario.rol, correo: usuario.correo, equipo: usuario.equipo || [] }
           : { vendedor: '', rol: 'sin-login', correo: '' };
         break;
       case 'getAllData':
@@ -368,8 +378,10 @@ function buscarObraRepetida_(datos, encabezados, data) {
 }
 
 function createNewObraSinLock_(data, usuario) {
-  // Un vendedor solo crea obras a su nombre; jefatura puede asignar a cualquiera.
-  if (usuario && !esJefatura_(usuario)) data['Vendedor'] = usuario.vendedor;
+  // Jefatura asigna a cualquiera; un jefe zonal a sí mismo o a su equipo; un vendedor, solo a sí mismo.
+  if (usuario && !esJefatura_(usuario) && !estaEnAlcance_(data['Vendedor'], usuario)) {
+    data['Vendedor'] = usuario.vendedor;
+  }
 
   const obligatorios = ['Empresa', 'Obra / PDV', 'Vendedor', 'Canal', 'Región', 'Comuna'];
   const faltantes = obligatorios.filter(c => !String(data[c] || '').trim());
@@ -385,8 +397,8 @@ function createNewObraSinLock_(data, usuario) {
     if (!usuario || esJefatura_(usuario)) {
       throw new Error(`Esa obra ya existe: ${idRep} (${duenoRep}).`);
     }
-    if (esDelVendedor_(duenoRep, usuario)) {
-      throw new Error(`Esa obra ya está en tu cartera: ${idRep}.`);
+    if (estaEnAlcance_(duenoRep, usuario)) {
+      throw new Error(`Esa obra ya está registrada: ${idRep} (${duenoRep}).`);
     }
     throw new Error(`Esa obra ya está registrada con otro vendedor (${idRep}). Si te corresponde, pide a jefatura que te la asigne.`);
   }
