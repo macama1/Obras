@@ -41,7 +41,19 @@ button, input, select, textarea { font: inherit; color: inherit; }
   max-width: 760px; margin: 0 auto; padding: 10px 16px;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
-.rc-top img { height: 46px; width: auto; display: block; }
+/* Logos Natstone y Pietra, uno al lado del otro */
+.marcas { display: flex; align-items: center; gap: 14px; }
+.marcas img { display: block; width: auto; }
+.marcas .m-nat { height: 52px; }
+.marcas .m-pie { height: 20px; }
+.marcas .m-sep { width: 1px; align-self: stretch; background: var(--line); margin: 6px 0; }
+@media (max-width: 420px) {
+  .marcas { gap: 10px; }
+  .marcas .m-nat { height: 40px; }
+  .marcas .m-pie { height: 15px; }
+  .rc-who { gap: 8px; }
+  .rc-who > span { display: none; }
+}
 .rc-who { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); text-align: right; }
 .rc-who strong { display: block; color: var(--ink); font-weight: 600; }
 .rc-main { max-width: 760px; margin: 0 auto; padding: 20px 16px 120px; }
@@ -215,9 +227,17 @@ details.more[open] summary::before { content: '−'; }
 
 /* ---------- Login ---------- */
 .login { max-width: 420px; margin: 8vh auto 0; padding: 0 16px; }
-.login img { height: 72px; display: block; margin: 0 0 18px; }
+.login .marcas { margin: 0 0 22px; gap: 20px; }
+.login .marcas .m-nat { height: 72px; }
+.login .marcas .m-pie { height: 28px; }
 .login .sheet { padding: 22px 20px 18px; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+}
+
+@media (max-width: 420px) {
+  .login .marcas { gap: 14px; }
+  .login .marcas .m-nat { height: 54px; }
+  .login .marcas .m-pie { height: 21px; }
 }
