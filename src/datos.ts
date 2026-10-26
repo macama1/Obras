@@ -53,23 +53,26 @@ export const estadosEspeciales = ['Detenida', 'Sin Información', 'No Aplica'];
 // Canales que son obras (tienen etapas). Los demás son puntos de venta: ferreterías, distribuidores, etc.
 export const esCanalDeObra = (canal: string) => /constructora|contratista/.test(normalizar(canal));
 
-// Grupo de una obra para contar y para el color en el mapa.
-export type Grupo = 'activa' | 'no-iniciada' | 'terminada' | 'detenida' | 'sin-info' | 'pdv';
+// Cada fila del radar es un punto de venta. "Aplica" (es una obra) cuando tiene un estado de obra:
+// No Iniciada, Obras Preliminares, Fundaciones, Obra Gruesa, Terminaciones, Terminada o Detenida.
+// "No Aplica" (o sin estado) es un punto de venta que no es obra: ferretería, distribuidor, etc.
+export type Grupo = 'activa' | 'no-iniciada' | 'terminada' | 'detenida' | 'sin-info' | 'no-aplica';
 export const ETAPAS_ACTIVAS = ['Obras Preliminares', 'Fundaciones', 'Obra Gruesa', 'Terminaciones'];
-export function grupoDe(estado: string, canal: string): Grupo {
+export function grupoDe(estado: string): Grupo {
   const e = normalizar(estado);
   if (ETAPAS_ACTIVAS.some(x => normalizar(x) === e)) return 'activa';
   if (e === 'no iniciada') return 'no-iniciada';
   if (e === 'terminada') return 'terminada';
   if (e === 'detenida') return 'detenida';
-  if (e === 'no aplica' || (!esCanalDeObra(canal) && canal.trim() !== '' && (e === '' || e === 'sin informacion'))) return 'pdv';
-  return 'sin-info';
+  if (e === 'sin informacion') return 'sin-info';
+  return 'no-aplica';
 }
+export const aplica = (estado: string) => !['sin-info', 'no-aplica'].includes(grupoDe(estado));
 export const nombreGrupo: Record<Grupo, string> = {
   'activa': 'En construcción', 'no-iniciada': 'No iniciadas', 'terminada': 'Terminadas',
-  'detenida': 'Detenidas', 'sin-info': 'Sin información', 'pdv': 'Puntos de venta',
+  'detenida': 'Detenidas', 'sin-info': 'Sin información', 'no-aplica': 'No aplica',
 };
 export const colorGrupo: Record<Grupo, string> = {
   'activa': '#e8a20c', 'no-iniciada': '#8a979c', 'terminada': '#1f2326',
-  'detenida': '#b3261e', 'sin-info': '#c4cbc8', 'pdv': '#2f6db3',
+  'detenida': '#b3261e', 'sin-info': '#c4cbc8', 'no-aplica': '#2f6db3',
 };

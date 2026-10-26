@@ -5,7 +5,7 @@ import { postApi, mensajeServidor } from './api';
 import Login from './Login';
 import {
   canalOptions, vendedorOptions, tipoConstruccionOptions, normalizar, todasLasComunas, regionDeComuna,
-  etapasObra, etapasCortas, estadosEspeciales, esCanalDeObra, grupoDe,
+  etapasObra, etapasCortas, estadosEspeciales, esCanalDeObra, grupoDe, aplica,
 } from './datos';
 import { useUbicacion, pedirPosicion, distanciaMetros, type Posicion } from './ubicacion';
 import type { UbicacionVendedor } from './Mapa';
@@ -138,9 +138,10 @@ const IconoBuscar = () => (
 // ---------- Pantalla 1: mis obras ----------
 // Resumen de una cartera: cuántas obras tiene y en qué estado están.
 function resumenDe(obras: Obra[]) {
-  const r = { total: obras.length, activa: 0, 'no-iniciada': 0, terminada: 0, detenida: 0, 'sin-info': 0, pdv: 0, compran: 0, atrasadas: 0 };
+  const r = { total: obras.length, activa: 0, 'no-iniciada': 0, terminada: 0, detenida: 0, 'sin-info': 0, 'no-aplica': 0, obras: 0, compran: 0, atrasadas: 0 };
   for (const o of obras) {
-    r[grupoDe(txt(o, 'Estado de Obra'), txt(o, 'Canal'))]++;
+    r[grupoDe(txt(o, 'Estado de Obra'))]++;
+    if (aplica(txt(o, 'Estado de Obra'))) r.obras++;
     if (normalizar(txt(o, 'Les Vendemos?')) === 'si') r.compran++;
     const d = diasDesde(o['Última Actualización']);
     if (d === null || d > 45) r.atrasadas++;
@@ -151,13 +152,13 @@ function resumenDe(obras: Obra[]) {
 function ResumenVendedor({ nombre, obras }: { nombre: string; obras: Obra[] }) {
   const r = resumenDe(obras);
   const datos: [string, number][] = [
-    ['En construcción', r.activa], ['No iniciadas', r['no-iniciada']], ['Puntos de venta', r.pdv],
+    ['En construcción', r.activa], ['No iniciadas', r['no-iniciada']], ['No aplica (no son obras)', r['no-aplica']],
     ['Nos compran', r.compran], ['Más de 45 días sin actualizar', r.atrasadas],
   ];
   const otros = r.terminada + r.detenida + r['sin-info'];
   return (
     <div className="resumen" aria-live="polite">
-      <p className="resumen-t"><strong>{nombre}</strong> tiene <strong>{r.total}</strong> {r.total === 1 ? 'obra o punto de venta' : 'obras y puntos de venta'}</p>
+      <p className="resumen-t"><strong>{nombre}</strong> tiene <strong>{r.total}</strong> {r.total === 1 ? 'punto de venta' : 'puntos de venta'}; <strong>{r.obras}</strong> {r.obras === 1 ? 'es obra' : 'son obras'}</p>
       <div className="resumen-g">
         {datos.map(([k, v]) => <div key={k}><b>{v}</b><span>{k}</span></div>)}
       </div>
@@ -220,7 +221,7 @@ function MisObras({ usuario, obras, cargando, error, posicion, onAbrir, onNueva 
     <>
       <h1 className="rc-title">{titulo}</h1>
       <p className="rc-sub">
-        {cargando ? 'Cargando obras…' : `${obras.length} obras y puntos de venta. ${atrasadas} llevan más de 45 días sin actualizar.`}
+        {cargando ? 'Cargando obras…' : `${obras.length} puntos de venta (${obras.filter(o => aplica(txt(o, 'Estado de Obra'))).length} son obras). ${atrasadas} llevan más de 45 días sin actualizar.`}
       </p>
 
       <div className="rc-actions">
@@ -360,7 +361,9 @@ function FichaObra({ usuario, obra, posicion, comparte, onVolver, onGuardada, av
   const [datos, setDatos] = useState<Obra>(obra);
   const [guardando, setGuardando] = useState(false);
   const set = (k: string, v: string) => setDatos(d => ({ ...d, [k]: v }));
-  const esObra = esCanalDeObra(txt(obra, 'Canal')) || etapasObra.some(e => normalizar(e) === normalizar(txt(obra, 'Estado de Obra')));
+  // Se pregunta la etapa salvo que sea un punto de venta marcado "No Aplica".
+  const estadoActual = normalizar(txt(obra, 'Estado de Obra'));
+  const esObra = estadoActual ? estadoActual !== 'no aplica' : esCanalDeObra(txt(obra, 'Canal'));
 
   const cambios = useMemo(() => {
     const c: Record<string, string> = {};
