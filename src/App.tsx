@@ -5,7 +5,7 @@ import { postApi, mensajeServidor } from './api';
 import Login from './Login';
 import {
   canalOptions, vendedorOptions, tipoConstruccionOptions, normalizar, todasLasComunas, regionDeComuna,
-  etapasObra, etapasCortas, estadosEspeciales, esCanalDeObra, grupoDe, aplica,
+  etapasObra, etapasCortas, estadosEspeciales, esCanalDeObra, aplica,
 } from './datos';
 import { useUbicacion, pedirPosicion, distanciaMetros, type Posicion } from './ubicacion';
 import type { UbicacionVendedor } from './Mapa';
@@ -136,33 +136,36 @@ const IconoBuscar = () => (
 );
 
 // ---------- Pantalla 1: mis obras ----------
-// Resumen de una cartera: cuántas obras tiene y en qué estado están.
-function resumenDe(obras: Obra[]) {
-  const r = { total: obras.length, activa: 0, 'no-iniciada': 0, terminada: 0, detenida: 0, 'sin-info': 0, 'no-aplica': 0, obras: 0, compran: 0, atrasadas: 0 };
-  for (const o of obras) {
-    r[grupoDe(txt(o, 'Estado de Obra'))]++;
-    if (aplica(txt(o, 'Estado de Obra'))) r.obras++;
-    if (normalizar(txt(o, 'Les Vendemos?')) === 'si') r.compran++;
-    const d = diasDesde(o['Última Actualización']);
-    if (d === null || d > 45) r.atrasadas++;
-  }
-  return r;
-}
+// Resumen de una cartera, ordenado por lo que más importa para vender:
+// obra gruesa y fundaciones primero; después preliminares (aún temprano) y terminaciones (ya tarde).
+const ETAPAS_RESUMEN: { etapa: string; nombre: string; clave?: boolean }[] = [
+  { etapa: 'Obra Gruesa', nombre: 'Obra gruesa', clave: true },
+  { etapa: 'Fundaciones', nombre: 'Fundaciones', clave: true },
+  { etapa: 'Obras Preliminares', nombre: 'Obras preliminares' },
+  { etapa: 'Terminaciones', nombre: 'Terminaciones' },
+];
 
 function ResumenVendedor({ nombre, obras }: { nombre: string; obras: Obra[] }) {
-  const r = resumenDe(obras);
-  const datos: [string, number][] = [
-    ['En construcción', r.activa], ['No iniciadas', r['no-iniciada']], ['No aplica (no son obras)', r['no-aplica']],
-    ['Nos compran', r.compran], ['Más de 45 días sin actualizar', r.atrasadas],
-  ];
-  const otros = r.terminada + r.detenida + r['sin-info'];
+  const porEtapa = new Map<string, number>();
+  let compran = 0, atrasadas = 0, nObras = 0;
+  for (const o of obras) {
+    const e = normalizar(txt(o, 'Estado de Obra'));
+    porEtapa.set(e, (porEtapa.get(e) || 0) + 1);
+    if (aplica(txt(o, 'Estado de Obra'))) nObras++;
+    if (normalizar(txt(o, 'Les Vendemos?')) === 'si') compran++;
+    const d = diasDesde(o['Última Actualización']);
+    if (d === null || d > 45) atrasadas++;
+  }
   return (
     <div className="resumen" aria-live="polite">
-      <p className="resumen-t"><strong>{nombre}</strong> tiene <strong>{r.total}</strong> {r.total === 1 ? 'punto de venta' : 'puntos de venta'}; <strong>{r.obras}</strong> {r.obras === 1 ? 'es obra' : 'son obras'}</p>
+      <p className="resumen-t"><strong>{nombre}</strong> tiene <strong>{obras.length}</strong> {obras.length === 1 ? 'punto de venta' : 'puntos de venta'}; <strong>{nObras}</strong> {nObras === 1 ? 'es obra' : 'son obras'}</p>
       <div className="resumen-g">
-        {datos.map(([k, v]) => <div key={k}><b>{v}</b><span>{k}</span></div>)}
+        {ETAPAS_RESUMEN.map(x => (
+          <div key={x.etapa} className={x.clave ? 'clave' : ''}><b>{porEtapa.get(normalizar(x.etapa)) || 0}</b><span>{x.nombre}</span></div>
+        ))}
+        <div className="sep"><b>{compran}</b><span>Nos compran</span></div>
+        <div><b>{atrasadas}</b><span>Más de 45 días sin actualizar</span></div>
       </div>
-      {otros > 0 && <p className="resumen-n">Además: {r.terminada} terminadas, {r.detenida} detenidas y {r['sin-info']} sin información de etapa.</p>}
     </div>
   );
 }
