@@ -12,7 +12,7 @@ export interface UbicacionVendedor { vendedor: string; lat: number; lng: number;
 const txt = (o: Obra, k: string) => String(o?.[k] ?? '').trim();
 const num = (v: unknown) => { const n = Number(String(v ?? '').replace(',', '.')); return isFinite(n) && n !== 0 ? n : null; };
 const CHILE: L.LatLngBoundsExpression = [[-55.9, -75.8], [-17.4, -66.4]];
-const ORDEN_GRUPOS: Grupo[] = ['activa', 'no-iniciada', 'sin-info', 'detenida', 'terminada', 'pdv'];
+const ORDEN_GRUPOS: Grupo[] = ['activa', 'no-iniciada', 'sin-info', 'detenida', 'terminada', 'no-aplica'];
 
 function haceCuanto(iso: string) {
   const t = new Date(iso).getTime();
@@ -59,7 +59,7 @@ export default function Mapa({ obras, veVendedor, ubicaciones, miPosicion, onAbr
     let sinUbicar = 0;
     for (const o of obras) {
       const lat = num(o['Latitud']), lng = num(o['Longitud']);
-      const g = grupoDe(txt(o, 'Estado de Obra'), txt(o, 'Canal'));
+      const g = grupoDe(txt(o, 'Estado de Obra'));
       if (lat === null || lng === null) { sinUbicar++; continue; }
       porGrupo[g] = (porGrupo[g] || 0) + 1;
       ubicadas.push({ o, lat, lng, g, aprox: txt(o, 'Ubicación en mapa').startsWith('Comuna') });
