@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { postApi, mensajeServidor } from './api';
 import Login from './Login';
 import {
   canalOptions, vendedorOptions, tipoConstruccionOptions, normalizar, todasLasComunas, regionDeComuna,
-  etapasObra, etapasCortas, estadosEspeciales, esCanalDeObra,
+  etapasObra, etapasCortas, estadosEspeciales, esCanalDeObra, grupoDe,
 } from './datos';
+import { useUbicacion, pedirPosicion, distanciaMetros, type Posicion } from './ubicacion';
+import type { UbicacionVendedor } from './Mapa';
 import './radar.css';
+
+// El mapa se carga solo cuando alguien lo abre (Leaflet pesa ~150 kB).
+const Mapa = lazy(() => import('./Mapa'));
 
 // ---------- Tipos y utilidades ----------
 type Obra = Record<string, unknown>;
@@ -15,6 +20,8 @@ interface Cliente { empresa: string; rut: string; }
 interface Usuario { vendedor: string; rol: 'vendedor' | 'jefe zonal' | 'jefatura'; correo: string; equipo?: string[]; }
 
 const txt = (o: Obra | null | undefined, k: string) => String(o?.[k] ?? '').trim();
+// Para los campos de texto: sin recortar, o los espacios al final se borran mientras se escribe.
+const crudo = (o: Obra | null | undefined, k: string) => String(o?.[k] ?? '');
 const DIA = 86400000;
 
 function diasDesde(valor: unknown): number | null {
@@ -32,6 +39,7 @@ function textoDias(d: number | null) {
   return `Hace ${d} días`;
 }
 const claseDias = (d: number | null) => (d === null || d > 90 ? 'bad' : d > 45 ? 'warn' : 'ok');
+const formatoDistancia = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`);
 
 // ---------- Piezas reutilizables ----------
 function Chips({ opciones, valor, onCambio, etiqueta, chico }: {
@@ -128,19 +136,68 @@ const IconoBuscar = () => (
 );
 
 // ---------- Pantalla 1: mis obras ----------
-function MisObras({ usuario, obras, cargando, error, onAbrir, onNueva }: {
-  usuario: Usuario; obras: Obra[]; cargando: boolean; error: string;
+// Resumen de una cartera: cuántas obras tiene y en qué estado están.
+function resumenDe(obras: Obra[]) {
+  const r = { total: obras.length, activa: 0, 'no-iniciada': 0, terminada: 0, detenida: 0, 'sin-info': 0, pdv: 0, compran: 0, atrasadas: 0 };
+  for (const o of obras) {
+    r[grupoDe(txt(o, 'Estado de Obra'), txt(o, 'Canal'))]++;
+    if (normalizar(txt(o, 'Les Vendemos?')) === 'si') r.compran++;
+    const d = diasDesde(o['Última Actualización']);
+    if (d === null || d > 45) r.atrasadas++;
+  }
+  return r;
+}
+
+function ResumenVendedor({ nombre, obras }: { nombre: string; obras: Obra[] }) {
+  const r = resumenDe(obras);
+  const datos: [string, number][] = [
+    ['En construcción', r.activa], ['No iniciadas', r['no-iniciada']], ['Puntos de venta', r.pdv],
+    ['Nos compran', r.compran], ['Más de 45 días sin actualizar', r.atrasadas],
+  ];
+  const otros = r.terminada + r.detenida + r['sin-info'];
+  return (
+    <div className="resumen" aria-live="polite">
+      <p className="resumen-t"><strong>{nombre}</strong> tiene <strong>{r.total}</strong> {r.total === 1 ? 'obra o punto de venta' : 'obras y puntos de venta'}</p>
+      <div className="resumen-g">
+        {datos.map(([k, v]) => <div key={k}><b>{v}</b><span>{k}</span></div>)}
+      </div>
+      {otros > 0 && <p className="resumen-n">Además: {r.terminada} terminadas, {r.detenida} detenidas y {r['sin-info']} sin información de etapa.</p>}
+    </div>
+  );
+}
+
+function MisObras({ usuario, obras, cargando, error, posicion, onAbrir, onNueva }: {
+  usuario: Usuario; obras: Obra[]; cargando: boolean; error: string; posicion: Posicion | null;
   onAbrir: (o: Obra) => void; onNueva: (texto: string) => void;
 }) {
   const [busqueda, setBusqueda] = useState('');
   const [vendedor, setVendedor] = useState('');
   const [orden, setOrden] = useState<'pendientes' | 'recientes'>('pendientes');
   const [limite, setLimite] = useState(40);
+  const [modo, setModo] = useState<'lista' | 'mapa'>(() => { try { return localStorage.getItem('radar-modo') === 'mapa' ? 'mapa' : 'lista'; } catch { return 'lista'; } });
+  const [ubicaciones, setUbicaciones] = useState<UbicacionVendedor[] | null>(null);
+  const [verVendedores, setVerVendedores] = useState(true);
   const veVarias = usuario.rol !== 'vendedor';
+  const cambiarModo = (m: 'lista' | 'mapa') => { setModo(m); try { localStorage.setItem('radar-modo', m); } catch { /* sin almacenamiento */ } };
 
-  const vendedores = useMemo(
-    () => veVarias ? [...new Set(obras.map(o => txt(o, 'Vendedor')).filter(Boolean))].sort() : [],
-    [obras, veVarias]);
+  // Cantidad de obras de cada vendedor, para los botones del filtro.
+  const conteo = useMemo(() => {
+    const c = new Map<string, number>();
+    if (veVarias) for (const o of obras) { const v = txt(o, 'Vendedor'); if (v) c.set(v, (c.get(v) || 0) + 1); }
+    return c;
+  }, [obras, veVarias]);
+  const vendedores = useMemo(() => [...conteo.keys()].sort(), [conteo]);
+
+  // Jefatura y jefes zonales ven dónde está cada vendedor (se actualiza cada 2 minutos con el mapa abierto).
+  useEffect(() => {
+    if (!veVarias || modo !== 'mapa') return;
+    let vivo = true;
+    const cargar = () => postApi<UbicacionVendedor[]>({ action: 'getUbicaciones' })
+      .then(r => { if (vivo && r.status === 'success') setUbicaciones(r.data || []); }).catch(() => {});
+    cargar();
+    const t = setInterval(cargar, 120000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [veVarias, modo]);
 
   const lista = useMemo(() => {
     const q = normalizar(busqueda);
@@ -181,24 +238,45 @@ function MisObras({ usuario, obras, cargando, error, onAbrir, onNueva }: {
       </div>
 
       <div className="rc-filters">
-        <span className="label">Ordenar:</span>
-        <button className="chip chip-sm" aria-pressed={orden === 'pendientes'} onClick={() => setOrden('pendientes')}>Más atrasadas primero</button>
-        <button className="chip chip-sm" aria-pressed={orden === 'recientes'} onClick={() => setOrden('recientes')}>Recién actualizadas</button>
+        <div className="seg" role="tablist" aria-label="Ver como">
+          <button role="tab" aria-selected={modo === 'lista'} onClick={() => cambiarModo('lista')}>Lista</button>
+          <button role="tab" aria-selected={modo === 'mapa'} onClick={() => cambiarModo('mapa')}>Mapa</button>
+        </div>
+        {modo === 'lista' && <>
+          <span className="label">Ordenar:</span>
+          <button className="chip chip-sm" aria-pressed={orden === 'pendientes'} onClick={() => setOrden('pendientes')}>Más atrasadas primero</button>
+          <button className="chip chip-sm" aria-pressed={orden === 'recientes'} onClick={() => setOrden('recientes')}>Recién actualizadas</button>
+        </>}
+        {modo === 'mapa' && veVarias && (
+          <button className="chip chip-sm" aria-pressed={verVendedores} onClick={() => setVerVendedores(v => !v)}>Mostrar vendedores</button>
+        )}
       </div>
       {veVarias && vendedores.length > 1 && (
         <div className="rc-filters">
           <span className="label">Vendedor:</span>
-          <button className="chip chip-sm" aria-pressed={!vendedor} onClick={() => setVendedor('')}>Todos</button>
+          <button className="chip chip-sm" aria-pressed={!vendedor} onClick={() => setVendedor('')}>Todos <span className="n">{obras.length}</span></button>
           {vendedores.map(v => (
-            <button key={v} className="chip chip-sm" aria-pressed={vendedor === v} onClick={() => setVendedor(vendedor === v ? '' : v)}>{v}</button>
+            <button key={v} className="chip chip-sm" aria-pressed={vendedor === v} onClick={() => setVendedor(vendedor === v ? '' : v)}>
+              {v} <span className="n">{conteo.get(v)}</span>
+            </button>
           ))}
         </div>
+      )}
+      {veVarias && vendedor && !cargando && (
+        <ResumenVendedor nombre={vendedor} obras={obras.filter(o => normalizar(txt(o, 'Vendedor')) === normalizar(vendedor))} />
       )}
 
       {error && <p className="notice">{error}</p>}
       {cargando && <div className="loading">Cargando tus obras…</div>}
 
-      {!cargando && !error && (
+      {!cargando && !error && modo === 'mapa' && (
+        <Suspense fallback={<div className="loading">Cargando mapa…</div>}>
+          <Mapa obras={lista} veVendedor={veVarias} onAbrir={onAbrir} miPosicion={posicion}
+            ubicaciones={veVarias && verVendedores ? (ubicaciones || []).filter(u => !vendedor || normalizar(u.vendedor) === normalizar(vendedor)) : null} />
+        </Suspense>
+      )}
+
+      {!cargando && !error && modo === 'lista' && (
         <div className="rc-list">
           {lista.length === 0 ? (
             <div className="empty">
@@ -242,8 +320,42 @@ function MisObras({ usuario, obras, cargando, error, onAbrir, onNueva }: {
 }
 
 // ---------- Pantalla 2: actualizar una obra ----------
-function FichaObra({ usuario, obra, onVolver, onGuardada, avisar }: {
-  usuario: Usuario; obra: Obra; onVolver: () => void; onGuardada: (o: Obra) => void; avisar: (m: string, error?: boolean) => void;
+// Texto que explica cómo está ubicada la obra en el mapa.
+function textoUbicacion(o: Obra) {
+  const est = txt(o, 'Ubicación en mapa');
+  if (!txt(o, 'Latitud')) {
+    if (est === 'No encontrada') return 'No se encontró su dirección en el mapa.';
+    return txt(o, 'ID') ? 'Todavía no está en el mapa; se ubicará sola por su dirección.' : 'Se ubicará por la dirección al agregarla.';
+  }
+  if (est === 'GPS en obra') return 'Marcada con el GPS estando en la obra.';
+  if (est.startsWith('Comuna')) return 'Ubicación aproximada: centro de la comuna.';
+  return 'Ubicada por su dirección.';
+}
+
+// Botón "Estoy en la obra": guarda la posición del teléfono como ubicación de la obra.
+function MarcarEnObra({ datos, onMarcar }: { datos: Obra; onMarcar: (p: Posicion) => void }) {
+  const [buscando, setBuscando] = useState(false);
+  const [error, setError] = useState('');
+  const marcar = async () => {
+    setBuscando(true); setError('');
+    try { onMarcar(await pedirPosicion()); } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo obtener tu ubicación.'); }
+    setBuscando(false);
+  };
+  return (
+    <div className="ubic">
+      <p className="ubic-t"><b>En el mapa:</b> {textoUbicacion(datos)}</p>
+      <button type="button" className="btn btn-ghost btn-small" onClick={marcar} disabled={buscando}>
+        {buscando ? 'Buscando tu ubicación…' : 'Estoy en la obra: marcarla aquí'}
+      </button>
+      {error && <p className="auto-note aviso">{error}</p>}
+    </div>
+  );
+}
+const conPosicion = (p: Posicion) => ({ 'Latitud': String(p.lat), 'Longitud': String(p.lng), 'Ubicación en mapa': 'GPS en obra' });
+
+function FichaObra({ usuario, obra, posicion, comparte, onVolver, onGuardada, avisar }: {
+  usuario: Usuario; obra: Obra; posicion: Posicion | null; comparte: boolean;
+  onVolver: () => void; onGuardada: (o: Obra) => void; avisar: (m: string, error?: boolean) => void;
 }) {
   const [datos, setDatos] = useState<Obra>(obra);
   const [guardando, setGuardando] = useState(false);
@@ -260,8 +372,14 @@ function FichaObra({ usuario, obra, onVolver, onGuardada, avisar }: {
 
   const guardar = async () => {
     setGuardando(true);
+    // Dónde se registró la visita: la posición reciente del teléfono, si la persona comparte su ubicación.
+    let gps: Posicion | null = posicion && Date.now() - posicion.hora < 120000 ? posicion : null;
+    if (comparte && !gps) gps = await pedirPosicion(6000).catch(() => null);
     try {
-      const r = await postApi<{ row?: Obra }>({ action: 'editObra', id: txt(obra, 'ID'), updates: cambios });
+      const r = await postApi<{ row?: Obra }>({
+        action: 'editObra', id: txt(obra, 'ID'), updates: cambios,
+        ubicacion: gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : undefined,
+      });
       if (r.status !== 'success') throw new Error(mensajeServidor(r.message));
       onGuardada(r.data?.row || { ...obra, ...cambios });
       avisar(hayCambios ? 'Cambios guardados y visita registrada.' : 'Visita registrada.');
@@ -282,6 +400,9 @@ function FichaObra({ usuario, obra, onVolver, onGuardada, avisar }: {
           <span>{[txt(obra, 'Dirección'), txt(obra, 'Comuna')].filter(Boolean).join(', ')}</span>
           {usuario.rol !== 'vendedor' && <span>{txt(obra, 'Vendedor')}</span>}
         </div>
+        {posicion && txt(obra, 'Latitud') && (
+          <p className="dist-ficha">A {formatoDistancia(distanciaMetros(posicion, { lat: Number(txt(obra, 'Latitud')), lng: Number(txt(obra, 'Longitud')) }))} de ti</p>
+        )}
         <p className={`fresh ${claseDias(d)}`} style={{ margin: '6px 0 12px' }}>
           {d === null ? 'Nunca se ha actualizado' : `Última actualización: ${textoDias(d).toLowerCase()}`}
         </p>
@@ -301,31 +422,35 @@ function FichaObra({ usuario, obra, onVolver, onGuardada, avisar }: {
         <div className="q">
           <label className="field">
             <span>Próximos pasos</span>
-            <textarea className="textarea" value={txt(datos, 'Próximos Pasos')} placeholder="Qué quedó pendiente y para cuándo"
+            <textarea className="textarea" value={crudo(datos, 'Próximos Pasos')} placeholder="Qué quedó pendiente y para cuándo"
               onChange={e => set('Próximos Pasos', e.target.value)} />
           </label>
           <label className="field">
             <span>Contacto <small>nombre, cargo, teléfono o correo</small></span>
-            <textarea className="textarea" value={txt(datos, 'Contacto')} onChange={e => set('Contacto', e.target.value)} />
+            <textarea className="textarea" value={crudo(datos, 'Contacto')} onChange={e => set('Contacto', e.target.value)} />
           </label>
         </div>
         <details className="more">
           <summary>Datos de la obra</summary>
           <label className="field"><span>Nombre de la obra o punto de venta</span>
-            <input className="input" value={txt(datos, 'Obra / PDV')} onChange={e => set('Obra / PDV', e.target.value)} /></label>
+            <input className="input" value={crudo(datos, 'Obra / PDV')} onChange={e => set('Obra / PDV', e.target.value)} /></label>
           <label className="field"><span>Dirección</span>
-            <input className="input" value={txt(datos, 'Dirección')} onChange={e => set('Dirección', e.target.value)} /></label>
+            <input className="input" value={crudo(datos, 'Dirección')} onChange={e => set('Dirección', e.target.value)} /></label>
           <label className="field"><span>RUT de la empresa</span>
-            <input className="input" value={txt(datos, 'Rut Empresa')} onChange={e => set('Rut Empresa', e.target.value)} /></label>
+            <input className="input" value={crudo(datos, 'Rut Empresa')} onChange={e => set('Rut Empresa', e.target.value)} /></label>
           {esObra && <>
             <div className="field"><span>Tipo de construcción</span>
               <Chips chico etiqueta="Tipo de construcción" opciones={tipoConstruccionOptions.filter(t => t !== 'No Aplica')}
                 valor={txt(datos, 'Tipo Construcción')} onCambio={v => set('Tipo Construcción', v)} /></div>
             <label className="field"><span>N° de pisos / casas</span>
-              <input className="input" inputMode="numeric" value={txt(datos, 'Pisos')} onChange={e => set('Pisos', e.target.value)} /></label>
+              <input className="input" inputMode="numeric" value={crudo(datos, 'Pisos')} onChange={e => set('Pisos', e.target.value)} /></label>
           </>}
           <label className="field"><span>Descripción</span>
-            <textarea className="textarea" value={txt(datos, 'Descripción de la obra o PDV')} onChange={e => set('Descripción de la obra o PDV', e.target.value)} /></label>
+            <textarea className="textarea" value={crudo(datos, 'Descripción de la obra o PDV')} onChange={e => set('Descripción de la obra o PDV', e.target.value)} /></label>
+          <MarcarEnObra datos={datos} onMarcar={p => {
+            setDatos(d => ({ ...d, ...conPosicion(p) }));
+            avisar(`Ubicación marcada (precisión ${p.precision} m). Guarda para confirmarla.`, p.precision > 100);
+          }} />
           {txt(obra, 'Acciones Última Reunion') && (
             <p className="q-help">Acciones de la última reunión: {txt(obra, 'Acciones Última Reunion')}</p>
           )}
@@ -481,6 +606,7 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
             {d['Región'] && <p className="auto-note">Región: {d['Región']}</p>}
             <label className="field" style={{ marginTop: 14 }}><span>Dirección</span>
               <input className="input" value={d['Dirección']} placeholder="Calle y número" onChange={e => set('Dirección', e.target.value)} /></label>
+            <MarcarEnObra datos={d} onMarcar={p => { setD(x => ({ ...x, ...conPosicion(p) })); avisar(`Ubicación marcada (precisión ${p.precision} m).`, p.precision > 100); }} />
           </div>
           {esObra && (
             <div className="q">
@@ -542,6 +668,9 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
 
 // ---------- Radar: estado compartido entre pantallas ----------
 function Radar({ usuario }: { usuario: Usuario }) {
+  // Jefatura no comparte su ubicación; vendedores y jefes zonales sí, después de leer el aviso.
+  const comparte = usuario.rol !== 'jefatura';
+  const ubic = useUbicacion(comparte);
   const [obras, setObras] = useState<Obra[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -569,12 +698,20 @@ function Radar({ usuario }: { usuario: Usuario }) {
 
   return (
     <>
+      {comparte && !ubic.aceptado && (
+        <div className="aviso-ubic" role="region" aria-label="Aviso de ubicación">
+          <p><strong>El radar usa tu ubicación.</strong> Mientras lo tienes abierto en horario laboral (lunes a sábado, 8:00 a 20:00),
+            jefatura ve en el mapa dónde estás y dónde registraste cada visita. Con la app cerrada no se comparte nada.</p>
+          <button className="btn btn-dark btn-small" onClick={ubic.aceptar}>Entendido, activar</button>
+        </div>
+      )}
       {vista.tipo === 'lista' && (
-        <MisObras usuario={usuario} obras={obras} cargando={cargando} error={error}
+        <MisObras usuario={usuario} obras={obras} cargando={cargando} error={error} posicion={ubic.posicion}
           onAbrir={o => setVista({ tipo: 'obra', id: txt(o, 'ID') })} onNueva={t => setVista({ tipo: 'nueva', texto: t })} />
       )}
       {vista.tipo === 'obra' && obraAbierta && (
         <FichaObra key={txt(obraAbierta, 'ID') + txt(obraAbierta, 'Última Actualización')} usuario={usuario} obra={obraAbierta} avisar={avisar}
+          posicion={ubic.posicion} comparte={comparte && ubic.aceptado}
           onVolver={() => setVista({ tipo: 'lista' })}
           onGuardada={o => setObras(prev => prev.map(x => txt(x, 'ID') === txt(o, 'ID') ? o : x))} />
       )}
