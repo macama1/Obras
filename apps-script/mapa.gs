@@ -43,13 +43,20 @@ function ubicarObrasPendientes() {
       const f = datos[i];
       if (!String(f[COL_ID - 1]).trim() || f[c.lat] !== '' || f[c.estado] === UBIC_NO) continue;
       if (Date.now() - inicio > 4.5 * 60 * 1000) { pendientes++; continue; } // límite de 6 min por ejecución
-      let r;
-      try {
-        r = geocodificar_(f[c.dir], f[c.comuna], f[c.region], cacheComunas);
-      } catch (e) {
-        Logger.log('Geocodificación detenida: ' + e); // cuota diaria agotada
-        break;
+      // Google no acepta muchas búsquedas seguidas: se hace una pausa corta entre obras y,
+      // si igual reclama, se espera y se reintenta. Si sigue fallando es la cuota del día.
+      let r, intentos = 0, detener = false;
+      while (true) {
+        try {
+          r = geocodificar_(f[c.dir], f[c.comuna], f[c.region], cacheComunas);
+          break;
+        } catch (e) {
+          if (++intentos > 3) { Logger.log('Geocodificación detenida: ' + e); detener = true; break; }
+          Utilities.sleep(2000 * intentos);
+        }
       }
+      if (detener) break;
+      Utilities.sleep(300);
       hoja.getRange(i + 1, c.lat + 1, 1, 3).setValues([r ? [r.lat, r.lng, r.tipo] : ['', '', UBIC_NO]]);
       ubicadas++;
     }
