@@ -28,23 +28,28 @@ function prepararMapa() {
 }
 
 // Se ejecuta cada hora: ubica las obras que aún no tienen coordenadas.
+// Busca las direcciones SIN bloquear el radar (los vendedores pueden seguir guardando) y al final
+// escribe todo de una vez con un bloqueo de pocos segundos, solo en las obras que no cambiaron entre medio.
 // Google limita las búsquedas diarias; si se acaban, sigue en la próxima hora.
 function ubicarObrasPendientes() {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) return; // otra ejecución o un guardado en curso
+  const turno = LockService.getDocumentLock(); // evita dos búsquedas a la vez (no afecta a los guardados)
+  if (!turno.tryLock(1000)) return;
   try {
     const inicio = Date.now();
     const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
     const c = columnasMapa_(hoja);
     const datos = hoja.getDataRange().getValues();
+    const claveDir = f => [f[c.dir], f[c.comuna], f[c.region]].map(normalizarTexto).join('|');
     const cacheComunas = {};
-    let ubicadas = 0, pendientes = 0;
+    const resultados = []; // { id, clave, valores }
+    let pendientes = 0;
     for (let i = 1; i < datos.length; i++) {
       const f = datos[i];
-      if (!String(f[COL_ID - 1]).trim() || f[c.lat] !== '' || f[c.estado] === UBIC_NO) continue;
-      if (Date.now() - inicio > 4.5 * 60 * 1000) { pendientes++; continue; } // límite de 6 min por ejecución
-      // Google no acepta muchas búsquedas seguidas: se hace una pausa corta entre obras y,
-      // si igual reclama, se espera y se reintenta. Si sigue fallando es la cuota del día.
+      const id = String(f[COL_ID - 1]).trim();
+      if (!id || f[c.lat] !== '' || f[c.estado] === UBIC_NO) continue;
+      if (Date.now() - inicio > 4 * 60 * 1000) { pendientes++; continue; } // límite de 6 min por ejecución
+      // Google no acepta muchas búsquedas seguidas: pausa corta entre obras y, si igual reclama,
+      // espera y reintenta. Si sigue fallando es la cuota del día.
       let r, intentos = 0, detener = false;
       while (true) {
         try {
@@ -57,12 +62,32 @@ function ubicarObrasPendientes() {
       }
       if (detener) break;
       Utilities.sleep(300);
-      hoja.getRange(i + 1, c.lat + 1, 1, 3).setValues([r ? [r.lat, r.lng, r.tipo] : ['', '', UBIC_NO]]);
-      ubicadas++;
+      resultados.push({ id: id, clave: claveDir(f), valores: r ? [r.lat, r.lng, r.tipo] : ['', '', UBIC_NO] });
     }
-    Logger.log('Obras ubicadas en esta ejecución: ' + ubicadas + (pendientes ? '. Quedan ' + pendientes + ' para la próxima hora.' : ''));
+    if (!resultados.length) return;
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    let escritas = 0;
+    try {
+      const actual = hoja.getDataRange().getValues();
+      const filaDe = {};
+      for (let i = 1; i < actual.length; i++) filaDe[String(actual[i][COL_ID - 1]).trim()] = i;
+      const bloque = actual.slice(1).map(f => [f[c.lat], f[c.lng], f[c.estado]]);
+      resultados.forEach(r => {
+        const i = filaDe[r.id];
+        if (!i || actual[i][c.lat] !== '' || claveDir(actual[i]) !== r.clave) return; // cambió entre medio
+        bloque[i - 1] = r.valores;
+        escritas++;
+      });
+      hoja.getRange(2, c.lat + 1, bloque.length, 3).setValues(bloque);
+      SpreadsheetApp.flush();
+    } finally {
+      lock.releaseLock();
+    }
+    Logger.log('Obras ubicadas en esta ejecución: ' + escritas + (pendientes ? '. Quedan ' + pendientes + ' para la próxima hora.' : ''));
   } finally {
-    lock.releaseLock();
+    turno.releaseLock();
   }
 }
 
