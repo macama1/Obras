@@ -172,10 +172,12 @@ function guardarUbicacion_(usuario, u, origen, obra) {
 
 // Jefatura ve a todos; un jefe zonal, a su equipo; un vendedor, solo a sí mismo.
 function getUbicaciones(usuario) {
+  // Siempre con login, aunque EXIGIR_LOGIN siga en false: la ubicación de las personas no es pública.
+  if (!usuario) throw new Error('NO_AUTORIZADO: inicia sesión para ver el mapa de vendedores.');
   const hoja = hojaUbicaciones_();
   if (hoja.getLastRow() < 2) return [];
   return hoja.getRange(2, 1, hoja.getLastRow() - 1, 8).getValues()
-    .filter(f => f[0] && (!usuario || esJefatura_(usuario) || estaEnAlcance_(f[1], usuario)))
+    .filter(f => f[0] && (esJefatura_(usuario) || estaEnAlcance_(f[1], usuario)))
     .map(f => ({
       vendedor: f[1], lat: f[2], lng: f[3], precision: f[4],
       fecha: f[5] instanceof Date ? f[5].toISOString() : String(f[5]),
