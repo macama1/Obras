@@ -338,12 +338,6 @@ function editObraSinLock_(id, updates, usuario, ubicacion) {
     const comentarios = updates['Próximos Pasos'] || (colComentariosIndex !== -1 ? filaActualizada[colComentariosIndex] : '');
     const estado = updates['Estado de Obra'] || (colEstadoIndex !== -1 ? filaActualizada[colEstadoIndex] : '');
     
-    // Dónde estaba el vendedor al registrar la visita y a qué distancia de la obra (mapa.gs).
-    const gps = ubicacionValida_(ubicacion);
-    const latObra = Number(filaActualizada[encabezados.indexOf('Latitud')]);
-    const lngObra = Number(filaActualizada[encabezados.indexOf('Longitud')]);
-    const distancia = gps && latObra && lngObra ? Math.round(distanciaMetros_(gps.lat, gps.lng, latObra, lngObra)) : '';
-    prepararRegistroConGps_(hojaRegistro);
     hojaRegistro.appendRow([
       id,
       filaActualizada[colEmpresaIndex],
@@ -351,13 +345,8 @@ function editObraSinLock_(id, updates, usuario, ubicacion) {
       usuario ? usuario.vendedor : filaActualizada[colVendedorIndex], // quién registró la visita
       fechaActual,
       comentarios,
-      estado, // Añadido al registro
-      gps ? gps.lat : '',
-      gps ? gps.lng : '',
-      gps ? gps.precision : '',
-      distancia
+      estado // Añadido al registro
     ]);
-    if (gps && usuario) guardarUbicacion_(usuario, gps, 'Visita', filaActualizada[colObraPdvIndex]);
   } catch(e) {
     Logger.log("No se pudo escribir en el registro de visitas. " + e.toString());
   }

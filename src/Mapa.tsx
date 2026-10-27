@@ -140,7 +140,7 @@ export default function Mapa({ obras, veVendedor, ubicaciones, miPosicion, onAbr
       const icono = L.divIcon({
         html: `<span>${iniciales(u.vendedor)}</span>`, className: `mk-vend${horas > 4 ? ' viejo' : ''}`, iconSize: [36, 36],
       });
-      const detalle = [haceCuanto(u.fecha), u.origen === 'Visita' && u.obra ? `visita en ${u.obra}` : ''].filter(Boolean).join(' · ');
+      const detalle = haceCuanto(u.fecha);
       L.marker([lat, lng], { icon: icono, zIndexOffset: 1000, keyboard: true, title: u.vendedor })
         .bindTooltip(`<strong>${u.vendedor.replace(/</g, '&lt;')}</strong><br>${detalle.replace(/</g, '&lt;')}`, { direction: 'top', offset: [0, -16] })
         .addTo(capa);
