@@ -6,7 +6,8 @@
 // - Si dos vendedores tienen a ese cliente en la región, se asigna al que tiene más obras de él.
 //   Si empatan, no se mueve y queda anotado para que jefatura decida.
 // - Todo queda en la hoja "Asignaciones automáticas" (para revisar o deshacer).
-// Corre todos los días a las 7:00 y al terminar "Importar Ondac Iconstruye".
+// Corre una vez al mes, el día 9 a las 7:00 (después de la carga mensual del día 8),
+// y al terminar "Importar Ondac Iconstruye".
 // Para empezar: elige prepararAsignacion y presiona Ejecutar (una sola vez).
 // =====================================================================
 const NOMBRE_HOJA_NO_ASIGNADAS = 'No Asignadas';
@@ -23,8 +24,11 @@ function simularAsignacion() {
 
 function prepararAsignacion() {
   hojaAsignaciones_();
-  const ya = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'asignarPorCartera');
-  if (!ya) ScriptApp.newTrigger('asignarPorCartera').timeBased().everyDays(1).atHour(7).create();
+  // Reemplaza cualquier activador anterior (antes era diario) por uno mensual: día 9 a las 7:00.
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'asignarPorCartera')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('asignarPorCartera').timeBased().onMonthDay(9).atHour(7).create();
   Logger.log(asignarPorCartera());
 }
 
