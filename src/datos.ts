@@ -1,7 +1,9 @@
 // Listas fijas del radar: canales, vendedores, estados, tipos y regiones/comunas de Chile.
-export const canalOptions = [
-  'Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande', 'Ferretería', 'Distribuidor', 'Especialista', 'Distribuidor Grandes Supericies', 'Instalador', 'Particular', 'Industrial',
-];
+// Dos universos: Obras (constructoras; las obras tienen etapas y terminan) y
+// FEDS (Ferreterías, Distribuidores, Especialistas y Sub distribuidores; siempre están, solo se visitan).
+export const canalesObras = ['Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande', 'Particular', 'Industrial'];
+export const canalesFeds = ['Ferretería', 'Distribuidor', 'Sub Distribuidor', 'Especialista', 'Instalador', 'Distribuidor Grandes Supericies'];
+export const canalOptions = [...canalesObras, ...canalesFeds];
 export const vendedorOptions = [
   "Andres Pacheco", "Cristian Maldonado", "Eduardo Arias", "Jorge Nario", "Lissett Santana", "Manuel Urzúa", "Mauricio Carvajal", "Mónica Valencia", "Vendedor General CA", "Vendedor General Peg&Mort (RH)"
 ];
@@ -76,3 +78,15 @@ export const colorGrupo: Record<Grupo, string> = {
   'activa': '#e8a20c', 'no-iniciada': '#8a979c', 'terminada': '#1f2326',
   'detenida': '#b3261e', 'sin-info': '#c4cbc8', 'no-aplica': '#2f6db3',
 };
+
+export type Universo = 'obras' | 'feds';
+export const nombreUniverso: Record<Universo, string> = { obras: 'Radar de Obras', feds: 'FEDS' };
+const esCanalFeds = (canal: string) => canalesFeds.some(c => normalizar(c) === normalizar(canal));
+// A qué universo pertenece una fila: si tiene etapa de obra es Obra; si no, manda el canal.
+// Sin canal ni etapa: "No Aplica" es FEDS, lo demás queda en Obras para completar su etapa.
+export function universoDe(estado: string, canal: string): Universo {
+  if (aplica(estado)) return 'obras';
+  if (esCanalFeds(canal)) return 'feds';
+  if (normalizar(canal)) return 'obras';
+  return normalizar(estado) === 'no aplica' ? 'feds' : 'obras';
+}

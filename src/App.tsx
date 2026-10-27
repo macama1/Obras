@@ -4,8 +4,8 @@ import { auth } from './firebase';
 import { postApi, mensajeServidor } from './api';
 import Login from './Login';
 import {
-  canalOptions, vendedorOptions, tipoConstruccionOptions, normalizar, todasLasComunas, regionDeComuna,
-  etapasObra, etapasCortas, estadosEspeciales, esCanalDeObra, aplica,
+  canalesObras, canalesFeds, vendedorOptions, tipoConstruccionOptions, normalizar, todasLasComunas, regionDeComuna,
+  etapasObra, etapasCortas, estadosEspeciales, universoDe, nombreUniverso, type Universo,
 } from './datos';
 import { useUbicacion, pedirPosicion, distanciaMetros, type Posicion } from './ubicacion';
 import type { UbicacionVendedor } from './Mapa';
@@ -20,6 +20,7 @@ interface Cliente { empresa: string; rut: string; }
 interface Usuario { vendedor: string; rol: 'vendedor' | 'jefe zonal' | 'jefatura'; correo: string; equipo?: string[]; }
 
 const txt = (o: Obra | null | undefined, k: string) => String(o?.[k] ?? '').trim();
+const universoObra = (o: Obra) => universoDe(txt(o, 'Estado de Obra'), txt(o, 'Canal'));
 // Para los campos de texto: sin recortar, o los espacios al final se borran mientras se escribe.
 const crudo = (o: Obra | null | undefined, k: string) => String(o?.[k] ?? '');
 const DIA = 86400000;
@@ -145,35 +146,43 @@ const ETAPAS_RESUMEN: { etapa: string; nombre: string; clave?: boolean }[] = [
   { etapa: 'Terminaciones', nombre: 'Terminaciones' },
 ];
 
-function ResumenVendedor({ nombre, obras }: { nombre: string; obras: Obra[] }) {
+function ResumenVendedor({ nombre, obras, universo }: { nombre: string; obras: Obra[]; universo: Universo }) {
   const porEtapa = new Map<string, number>();
-  let compran = 0, atrasadas = 0, nObras = 0;
+  const porCanal = new Map<string, number>();
+  let compran = 0, atrasadas = 0;
   for (const o of obras) {
     const e = normalizar(txt(o, 'Estado de Obra'));
     porEtapa.set(e, (porEtapa.get(e) || 0) + 1);
-    if (aplica(txt(o, 'Estado de Obra'))) nObras++;
+    const c = txt(o, 'Canal') || 'Sin canal';
+    porCanal.set(c, (porCanal.get(c) || 0) + 1);
     if (normalizar(txt(o, 'Les Vendemos?')) === 'si') compran++;
     const d = diasDesde(o['Última Actualización']);
     if (d === null || d > 45) atrasadas++;
   }
   return (
     <div className="resumen" aria-live="polite">
-      <p className="resumen-t"><strong>{nombre}</strong> tiene <strong>{obras.length}</strong> {obras.length === 1 ? 'punto de venta' : 'puntos de venta'}; <strong>{nObras}</strong> {nObras === 1 ? 'es obra' : 'son obras'}</p>
+      <p className="resumen-t"><strong>{nombre}</strong> tiene <strong>{obras.length}</strong> {universo === 'obras'
+        ? (obras.length === 1 ? 'obra' : 'obras') : (obras.length === 1 ? 'FEDS' : 'FEDS')}</p>
       <div className="resumen-g">
-        {ETAPAS_RESUMEN.map(x => (
-          <div key={x.etapa} className={x.clave ? 'clave' : ''}><b>{porEtapa.get(normalizar(x.etapa)) || 0}</b><span>{x.nombre}</span></div>
-        ))}
+        {universo === 'obras'
+          ? ETAPAS_RESUMEN.map(x => (
+            <div key={x.etapa} className={x.clave ? 'clave' : ''}><b>{porEtapa.get(normalizar(x.etapa)) || 0}</b><span>{x.nombre}</span></div>
+          ))
+          : [...porCanal.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([c, n]) => (
+            <div key={c}><b>{n}</b><span>{c}</span></div>
+          ))}
         <div className="sep"><b>{compran}</b><span>Nos compran</span></div>
-        <div><b>{atrasadas}</b><span>Más de 45 días sin actualizar</span></div>
+        <div><b>{atrasadas}</b><span>{universo === 'obras' ? 'Más de 45 días sin actualizar' : 'Más de 45 días sin visita'}</span></div>
       </div>
     </div>
   );
 }
 
-function MisObras({ usuario, obras, cargando, error, posicion, onAbrir, onNueva }: {
-  usuario: Usuario; obras: Obra[]; cargando: boolean; error: string; posicion: Posicion | null;
-  onAbrir: (o: Obra) => void; onNueva: (texto: string) => void;
+function MisObras({ usuario, universo, obras, cargando, error, posicion, onAbrir, onNueva, onUniverso }: {
+  usuario: Usuario; universo: Universo; obras: Obra[]; cargando: boolean; error: string; posicion: Posicion | null;
+  onAbrir: (o: Obra) => void; onNueva: (texto: string) => void; onUniverso: (u: Universo | null) => void;
 }) {
+  const esObras = universo === 'obras';
   const [busqueda, setBusqueda] = useState('');
   const [vendedor, setVendedor] = useState('');
   const [orden, setOrden] = useState<'pendientes' | 'recientes'>('pendientes');
@@ -218,13 +227,22 @@ function MisObras({ usuario, obras, cargando, error, posicion, onAbrir, onNueva 
   }, [obras, busqueda, vendedor, orden]);
 
   const atrasadas = useMemo(() => obras.filter(o => { const d = diasDesde(o['Última Actualización']); return d === null || d > 45; }).length, [obras]);
-  const titulo = usuario.rol === 'jefatura' ? 'Todo el radar' : usuario.rol === 'jefe zonal' ? 'Tus obras y las de tu equipo' : 'Tus obras';
+  const cosa = esObras ? 'obras' : 'FEDS';
+  const titulo = usuario.rol === 'jefatura' ? (esObras ? 'Todas las obras' : 'Todos los FEDS')
+    : usuario.rol === 'jefe zonal' ? `Tus ${cosa} y las de tu equipo` : `Tus ${cosa}`;
 
   return (
     <>
+      <div className="seg seg-universo" role="tablist" aria-label="Radar">
+        {(['obras', 'feds'] as Universo[]).map(u => (
+          <button key={u} role="tab" aria-selected={universo === u} onClick={() => onUniverso(u)}>{nombreUniverso[u]}</button>
+        ))}
+      </div>
       <h1 className="rc-title">{titulo}</h1>
       <p className="rc-sub">
-        {cargando ? 'Cargando obras…' : `${obras.length} puntos de venta (${obras.filter(o => aplica(txt(o, 'Estado de Obra'))).length} son obras). ${atrasadas} llevan más de 45 días sin actualizar.`}
+        {cargando ? `Cargando ${cosa}…` : esObras
+          ? `${obras.length} obras. ${atrasadas} llevan más de 45 días sin actualizar.`
+          : `${obras.length} ferreterías, distribuidores y especialistas. ${atrasadas} llevan más de 45 días sin visita.`}
       </p>
 
       <div className="rc-actions">
@@ -232,12 +250,12 @@ function MisObras({ usuario, obras, cargando, error, posicion, onAbrir, onNueva 
           <label className="rc-search">
             <IconoBuscar />
             <input type="search" value={busqueda} onChange={e => { setBusqueda(e.target.value); setLimite(40); }}
-              placeholder="Buscar obra para actualizarla" aria-label="Buscar obra para actualizarla" disabled={cargando} />
+              placeholder={esObras ? 'Buscar obra para actualizarla' : 'Buscar ferretería, distribuidor…'} aria-label="Buscar" disabled={cargando} />
           </label>
-          <p className="rc-search-hint">Por empresa, nombre de obra, comuna o dirección.</p>
+          <p className="rc-search-hint">Por empresa, {esObras ? 'nombre de obra' : 'sucursal'}, comuna o dirección.</p>
         </div>
         <button className="btn btn-primary" onClick={() => onNueva(busqueda)} disabled={cargando}>
-          + Agregar al radar
+          {esObras ? '+ Agregar obra' : '+ Agregar FEDS'}
         </button>
       </div>
 
@@ -267,11 +285,11 @@ function MisObras({ usuario, obras, cargando, error, posicion, onAbrir, onNueva 
         </div>
       )}
       {veVarias && vendedor && !cargando && (
-        <ResumenVendedor nombre={vendedor} obras={obras.filter(o => normalizar(txt(o, 'Vendedor')) === normalizar(vendedor))} />
+        <ResumenVendedor universo={universo} nombre={vendedor} obras={obras.filter(o => normalizar(txt(o, 'Vendedor')) === normalizar(vendedor))} />
       )}
 
       {error && <p className="notice">{error}</p>}
-      {cargando && <div className="loading">Cargando tus obras…</div>}
+      {cargando && <div className="loading">Cargando…</div>}
 
       {!cargando && !error && modo === 'mapa' && (
         <Suspense fallback={<div className="loading">Cargando mapa…</div>}>
@@ -285,9 +303,9 @@ function MisObras({ usuario, obras, cargando, error, posicion, onAbrir, onNueva 
           {lista.length === 0 ? (
             <div className="empty">
               {busqueda
-                ? <><p>No hay obras que coincidan con “{busqueda}”.</p><p>Si es nueva, agrégala al radar.</p></>
-                : <p>Todavía no tienes obras en el radar.</p>}
-              <button className="btn btn-primary" onClick={() => onNueva(busqueda)}>+ Agregar al radar</button>
+                ? <><p>No hay {cosa} que coincidan con “{busqueda}”.</p><p>Si es nuevo, agrégalo al radar.</p></>
+                : <p>Todavía no tienes {cosa} en el radar.</p>}
+              <button className="btn btn-primary" onClick={() => onNueva(busqueda)}>{esObras ? '+ Agregar obra' : '+ Agregar FEDS'}</button>
             </div>
           ) : (
             <>
@@ -303,7 +321,7 @@ function MisObras({ usuario, obras, cargando, error, posicion, onAbrir, onNueva 
                     <span className="rc-row-meta">
                       <span>{[txt(o, 'Comuna'), usuario.rol === 'jefatura' ? txt(o, 'ID') : ''].filter(Boolean).join(', ')}</span>
                       {veVarias && <span>{txt(o, 'Vendedor')}</span>}
-                      <MiniEtapas estado={txt(o, 'Estado de Obra')} />
+                      {esObras ? <MiniEtapas estado={txt(o, 'Estado de Obra')} /> : txt(o, 'Canal') && <span className="track-tag canal">{txt(o, 'Canal')}</span>}
                     </span>
                   </button>
                 );
@@ -331,7 +349,7 @@ function textoUbicacion(o: Obra) {
     if (est === 'No encontrada') return 'No se encontró su dirección en el mapa.';
     return txt(o, 'ID') ? 'Todavía no está en el mapa; se ubicará sola por su dirección.' : 'Se ubicará por la dirección al agregarla.';
   }
-  if (est === 'GPS en obra') return 'Marcada con el GPS estando en la obra.';
+  if (est === 'GPS en obra') return 'Marcada con el GPS estando en el lugar.';
   if (est.startsWith('Comuna')) return 'Ubicación aproximada: centro de la comuna.';
   return 'Ubicada por su dirección.';
 }
@@ -358,7 +376,7 @@ const ACTORES = [
   { k: 'Arquitecto', ayuda: 'oficina o profesional; decide qué se especifica' },
 ];
 
-function MarcarEnObra({ datos, onMarcar }: { datos: Obra; onMarcar: (p: Posicion) => void }) {
+function MarcarEnObra({ datos, onMarcar, esObra = true }: { datos: Obra; onMarcar: (p: Posicion) => void; esObra?: boolean }) {
   const [buscando, setBuscando] = useState(false);
   const [error, setError] = useState('');
   const marcar = async () => {
@@ -370,7 +388,7 @@ function MarcarEnObra({ datos, onMarcar }: { datos: Obra; onMarcar: (p: Posicion
     <div className="ubic">
       <p className="ubic-t"><b>En el mapa:</b> {textoUbicacion(datos)}</p>
       <button type="button" className="btn btn-ghost btn-small" onClick={marcar} disabled={buscando}>
-        {buscando ? 'Buscando tu ubicación…' : 'Estoy en la obra: marcarla aquí'}
+        {buscando ? 'Buscando tu ubicación…' : esObra ? 'Estoy en la obra: marcarla aquí' : 'Estoy en el local: marcarlo aquí'}
       </button>
       {error && <p className="auto-note aviso">{error}</p>}
     </div>
@@ -378,16 +396,15 @@ function MarcarEnObra({ datos, onMarcar }: { datos: Obra; onMarcar: (p: Posicion
 }
 const conPosicion = (p: Posicion) => ({ 'Latitud': String(p.lat), 'Longitud': String(p.lng), 'Ubicación en mapa': 'GPS en obra' });
 
-function FichaObra({ usuario, obra, posicion, onVolver, onGuardada, avisar }: {
-  usuario: Usuario; obra: Obra; posicion: Posicion | null;
+function FichaObra({ usuario, universo, obra, posicion, onVolver, onGuardada, avisar }: {
+  usuario: Usuario; universo: Universo; obra: Obra; posicion: Posicion | null;
   onVolver: () => void; onGuardada: (o: Obra) => void; avisar: (m: string, error?: boolean) => void;
 }) {
   const [datos, setDatos] = useState<Obra>(obra);
   const [guardando, setGuardando] = useState(false);
   const set = (k: string, v: string) => setDatos(d => ({ ...d, [k]: v }));
-  // Se pregunta la etapa salvo que sea un punto de venta marcado "No Aplica".
-  const estadoActual = normalizar(txt(obra, 'Estado de Obra'));
-  const esObra = estadoActual ? estadoActual !== 'no aplica' : esCanalDeObra(txt(obra, 'Canal'));
+  // Las obras tienen etapa; los FEDS no (siempre están, solo se visitan).
+  const esObra = universo === 'obras';
 
   const cambios = useMemo(() => {
     const c: Record<string, string> = {};
@@ -414,12 +431,13 @@ function FichaObra({ usuario, obra, posicion, onVolver, onGuardada, avisar }: {
 
   return (
     <>
-      <button className="btn-link back" onClick={onVolver}>‹ Volver a la lista</button>
+      <button className="btn-link back" onClick={onVolver}>‹ Volver a {esObra ? 'las obras' : 'los FEDS'}</button>
       <div className="sheet sheet-head">
         <div className="company">{txt(obra, 'Empresa')}</div>
         <h1 className="rc-title">{txt(obra, 'Obra / PDV') || 'Sin nombre'}</h1>
         <div className="meta">
           {usuario.rol === 'jefatura' && <span>Código {txt(obra, 'ID')}</span>}
+          {!esObra && txt(obra, 'Canal') && <span>{txt(obra, 'Canal')}</span>}
           <span>{[txt(obra, 'Dirección'), txt(obra, 'Comuna')].filter(Boolean).join(', ')}</span>
           {usuario.rol !== 'vendedor' && <span>{txt(obra, 'Vendedor')}</span>}
         </div>
@@ -451,7 +469,7 @@ function FichaObra({ usuario, obra, posicion, onVolver, onGuardada, avisar }: {
           {(cambios['Dirección'] !== undefined || cambios['Comuna'] !== undefined) && cambios['Latitud'] === undefined && (
             <p className="auto-note">Al guardar, la obra se vuelve a ubicar en el mapa con la nueva dirección.</p>
           )}
-          <MarcarEnObra datos={datos} onMarcar={p => {
+          <MarcarEnObra datos={datos} esObra={esObra} onMarcar={p => {
             setDatos(d => ({ ...d, ...conPosicion(p) }));
             avisar(`Ubicación marcada (precisión ${p.precision} m). Guarda para confirmarla.`, p.precision > 100);
           }} />
@@ -468,8 +486,8 @@ function FichaObra({ usuario, obra, posicion, onVolver, onGuardada, avisar }: {
           </label>
         </div>
         <details className="more">
-          <summary>Datos de la obra</summary>
-          <label className="field"><span>Nombre de la obra o punto de venta</span>
+          <summary>{esObra ? 'Datos de la obra' : 'Datos del punto de venta'}</summary>
+          <label className="field"><span>{esObra ? 'Nombre de la obra' : 'Nombre del punto de venta'}</span>
             <input className="input" value={crudo(datos, 'Obra / PDV')} onChange={e => set('Obra / PDV', e.target.value)} /></label>
           <label className="field"><span>RUT de la empresa</span>
             <input className="input" value={crudo(datos, 'Rut Empresa')} onChange={e => set('Rut Empresa', e.target.value)} /></label>
@@ -513,8 +531,8 @@ const nuevaVacia = (): Record<string, string> => ({
   'Contacto': '', 'Pisos': '', 'Descripción de la obra o PDV': '', 'Mandante / Inmobiliaria': '', 'Arquitecto': '',
 });
 
-function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada, avisar }: {
-  usuario: Usuario; obras: Obra[]; clientes: Cliente[]; textoInicial: string;
+function NuevaObra({ usuario, universo, obras, clientes, textoInicial, onVolver, onCreada, avisar }: {
+  usuario: Usuario; universo: Universo; obras: Obra[]; clientes: Cliente[]; textoInicial: string;
   onVolver: () => void; onCreada: (o: Obra) => void; avisar: (m: string, error?: boolean) => void;
 }) {
   const [paso, setPaso] = useState(1);
@@ -525,7 +543,8 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
   const [autoNota, setAutoNota] = useState('');
   const set = (k: string, v: string) => setD(x => ({ ...x, [k]: v }));
   const asignables = usuario.rol === 'jefatura' ? vendedorOptions : [usuario.vendedor, ...(usuario.equipo || [])];
-  const esObra = esCanalDeObra(d['Canal']);
+  const esObra = universo === 'obras';
+  const canales = esObra ? canalesObras : canalesFeds;
   const arriba = useRef<HTMLDivElement>(null);
   useEffect(() => { arriba.current?.scrollIntoView({ block: 'start' }); }, [paso]);
 
@@ -550,7 +569,7 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
   const elegirEmpresa = (label: string) => {
     const e = empresas.find(x => x.label === label);
     // El canal se copia de otras obras de la misma empresa, si existen.
-    const otra = obras.find(o => normalizar(txt(o, 'Empresa')) === normalizar(label) && txt(o, 'Canal'));
+    const otra = obras.find(o => normalizar(txt(o, 'Empresa')) === normalizar(label) && canales.includes(txt(o, 'Canal')));
     setD(x => ({ ...x, 'Empresa': label, 'Rut Empresa': e?.rut || x['Rut Empresa'], 'Canal': x['Canal'] || txt(otra, 'Canal') }));
     const notas = [otra && 'el tipo de cliente', e?.rut && 'el RUT (lo ves en Más detalles)'].filter(Boolean);
     setAutoNota(notas.length ? `Completamos ${notas.join(' y ')} con lo que ya está en el radar.` : '');
@@ -584,12 +603,12 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
   if (creada) {
     return (
       <div className="sheet done-box">
-        <p>Quedó agregada al radar</p>
+        <p>{esObra ? 'Quedó agregada al radar' : 'Quedó agregado a FEDS'}</p>
         {usuario.rol === 'jefatura' && <span className="code">{txt(creada, 'ID')}</span>}
         <p style={{ color: 'var(--muted)' }}>{txt(creada, 'Obra / PDV')}, {txt(creada, 'Empresa')}</p>
         <div className="chips" style={{ justifyContent: 'center', marginTop: 16 }}>
           <button className="btn btn-primary" onClick={() => { setCreada(null); setPaso(1); setD({ ...nuevaVacia(), 'Vendedor': usuario.rol === 'jefatura' ? '' : usuario.vendedor }); setComunaTexto(''); setAutoNota(''); }}>Agregar otra</button>
-          <button className="btn btn-ghost" onClick={onVolver}>Volver a la lista</button>
+          <button className="btn btn-ghost" onClick={onVolver}>{esObra ? 'Volver a las obras' : 'Volver a los FEDS'}</button>
         </div>
       </div>
     );
@@ -598,8 +617,8 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
   return (
     <div ref={arriba}>
       <button className="btn-link back" onClick={onVolver}>‹ Cancelar</button>
-      <h1 className="rc-title">Agregar al radar</h1>
-      <p className="rc-sub">Una obra nueva o un punto de venta (ferretería, distribuidor, casa matriz).</p>
+      <h1 className="rc-title">{esObra ? 'Agregar obra' : 'Agregar FEDS'}</h1>
+      <p className="rc-sub">{esObra ? 'Una obra nueva de una constructora.' : 'Una ferretería, distribuidor, sub distribuidor o especialista (casa matriz o sucursal).'}</p>
       <div className="steps" aria-label={`Paso ${paso} de 3`}>
         {['Empresa', 'Ubicación', 'Más detalles (opcional)'].map((s, i) => (
           <div key={s} className={i + 1 === paso ? 'now' : i + 1 < paso ? 'done' : ''}>{s}</div>
@@ -616,7 +635,7 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
           </div>
           <div className="q">
             <p className="q-title">¿Qué tipo de cliente es?</p>
-            <Chips etiqueta="Canal" opciones={canalOptions} valor={d['Canal']} onCambio={v => set('Canal', v)} />
+            <Chips etiqueta="Canal" opciones={canales} valor={d['Canal']} onCambio={v => set('Canal', v)} />
           </div>
           {usuario.rol !== 'vendedor' && (
             <div className="q">
@@ -641,7 +660,7 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
             {d['Región'] && <p className="auto-note">Región: {d['Región']}</p>}
             <label className="field" style={{ marginTop: 14 }}><span>Dirección</span>
               <input className="input" value={d['Dirección']} placeholder="Calle y número" onChange={e => set('Dirección', e.target.value)} /></label>
-            <MarcarEnObra datos={d} onMarcar={p => { setD(x => ({ ...x, ...conPosicion(p) })); avisar(`Ubicación marcada (precisión ${p.precision} m).`, p.precision > 100); }} />
+            <MarcarEnObra datos={d} esObra={esObra} onMarcar={p => { setD(x => ({ ...x, ...conPosicion(p) })); avisar(`Ubicación marcada (precisión ${p.precision} m).`, p.precision > 100); }} />
           </div>
           {esObra && (
             <div className="q">
@@ -705,6 +724,32 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
   );
 }
 
+// ---------- Inicio: elegir radar ----------
+function ElegirRadar({ usuario, cuenta, cargando, onElegir }: {
+  usuario: Usuario; cuenta: Record<Universo, number>; cargando: boolean; onElegir: (u: Universo) => void;
+}) {
+  const propio = usuario.rol === 'vendedor';
+  const opciones: { u: Universo; t: string; d: string }[] = [
+    { u: 'obras', t: 'Radar de Obras', d: 'Constructoras y sus obras: etapa, avance y próximos pasos.' },
+    { u: 'feds', t: 'FEDS', d: 'Ferreterías, distribuidores, especialistas y sub distribuidores para visitar.' },
+  ];
+  return (
+    <>
+      <h1 className="rc-title">Hola, {usuario.vendedor.split(' ')[0]}</h1>
+      <p className="rc-sub">¿Qué quieres revisar?</p>
+      <div className="universos">
+        {opciones.map(o => (
+          <button key={o.u} className="universo" onClick={() => onElegir(o.u)}>
+            <span className="universo-t">{o.t}</span>
+            <span className="universo-d">{o.d}</span>
+            <span className="universo-n">{cargando ? 'Cargando…' : `${cuenta[o.u]} ${propio ? 'en tu cartera' : 'en total'}`}</span>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 // ---------- Radar: estado compartido entre pantallas ----------
 function Radar({ usuario }: { usuario: Usuario }) {
   // Jefatura no comparte su ubicación; vendedores y jefes zonales sí, después de leer el aviso.
@@ -714,7 +759,14 @@ function Radar({ usuario }: { usuario: Usuario }) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  const [universo, setUniverso] = useState<Universo | null>(null);
   const [vista, setVista] = useState<{ tipo: 'lista' } | { tipo: 'obra'; id: string } | { tipo: 'nueva'; texto: string }>({ tipo: 'lista' });
+  const delUniverso = useMemo(() => universo ? obras.filter(o => universoObra(o) === universo) : [], [obras, universo]);
+  const cuenta = useMemo(() => {
+    const c = { obras: 0, feds: 0 };
+    for (const o of obras) c[universoObra(o)]++;
+    return c;
+  }, [obras]);
   const [toast, setToast] = useState<{ m: string; error?: boolean } | null>(null);
 
   useEffect(() => {
@@ -731,7 +783,7 @@ function Radar({ usuario }: { usuario: Usuario }) {
     postApi<Cliente[]>({ action: 'getClientList' }).then(r => { if (r.status === 'success') setClientes(r.data || []); }).catch(() => {});
   }, []);
 
-  useEffect(() => { window.scrollTo(0, 0); }, [vista.tipo]);
+  useEffect(() => { window.scrollTo(0, 0); }, [vista.tipo, universo]);
   const avisar = (m: string, err?: boolean) => { setToast({ m, error: err }); setTimeout(() => setToast(null), err ? 7000 : 3500); };
   const obraAbierta = vista.tipo === 'obra' ? obras.find(o => txt(o, 'ID') === vista.id) : null;
 
@@ -743,18 +795,21 @@ function Radar({ usuario }: { usuario: Usuario }) {
           <button className="btn btn-dark btn-small" onClick={ubic.aceptar}>Entendido, activar</button>
         </div>
       )}
-      {vista.tipo === 'lista' && (
-        <MisObras usuario={usuario} obras={obras} cargando={cargando} error={error} posicion={ubic.posicion}
+      {!universo && (
+        <ElegirRadar usuario={usuario} cuenta={cuenta} cargando={cargando} onElegir={u => { setUniverso(u); setVista({ tipo: 'lista' }); }} />
+      )}
+      {universo && vista.tipo === 'lista' && (
+        <MisObras usuario={usuario} universo={universo} obras={delUniverso} onUniverso={setUniverso} cargando={cargando} error={error} posicion={ubic.posicion}
           onAbrir={o => setVista({ tipo: 'obra', id: txt(o, 'ID') })} onNueva={t => setVista({ tipo: 'nueva', texto: t })} />
       )}
-      {vista.tipo === 'obra' && obraAbierta && (
-        <FichaObra key={txt(obraAbierta, 'ID') + txt(obraAbierta, 'Última Actualización')} usuario={usuario} obra={obraAbierta} avisar={avisar}
+      {universo && vista.tipo === 'obra' && obraAbierta && (
+        <FichaObra universo={universo} key={txt(obraAbierta, 'ID') + txt(obraAbierta, 'Última Actualización')} usuario={usuario} obra={obraAbierta} avisar={avisar}
           posicion={ubic.posicion}
           onVolver={() => setVista({ tipo: 'lista' })}
           onGuardada={o => setObras(prev => prev.map(x => txt(x, 'ID') === txt(o, 'ID') ? o : x))} />
       )}
-      {vista.tipo === 'nueva' && (
-        <NuevaObra usuario={usuario} obras={obras} clientes={clientes} textoInicial={vista.texto} avisar={avisar}
+      {universo && vista.tipo === 'nueva' && (
+        <NuevaObra universo={universo} usuario={usuario} obras={delUniverso} clientes={clientes} textoInicial={vista.texto} avisar={avisar}
           onVolver={() => setVista({ tipo: 'lista' })} onCreada={o => setObras(prev => [...prev, o])} />
       )}
       {toast && <div className={`toast${toast.error ? ' error' : ''}`} role="status">{toast.m}</div>}
