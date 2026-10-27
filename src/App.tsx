@@ -378,8 +378,8 @@ function MarcarEnObra({ datos, onMarcar }: { datos: Obra; onMarcar: (p: Posicion
 }
 const conPosicion = (p: Posicion) => ({ 'Latitud': String(p.lat), 'Longitud': String(p.lng), 'Ubicación en mapa': 'GPS en obra' });
 
-function FichaObra({ usuario, obra, posicion, comparte, onVolver, onGuardada, avisar }: {
-  usuario: Usuario; obra: Obra; posicion: Posicion | null; comparte: boolean;
+function FichaObra({ usuario, obra, posicion, onVolver, onGuardada, avisar }: {
+  usuario: Usuario; obra: Obra; posicion: Posicion | null;
   onVolver: () => void; onGuardada: (o: Obra) => void; avisar: (m: string, error?: boolean) => void;
 }) {
   const [datos, setDatos] = useState<Obra>(obra);
@@ -399,13 +399,9 @@ function FichaObra({ usuario, obra, posicion, comparte, onVolver, onGuardada, av
 
   const guardar = async () => {
     setGuardando(true);
-    // Dónde se registró la visita: la posición reciente del teléfono, si la persona comparte su ubicación.
-    let gps: Posicion | null = posicion && Date.now() - posicion.hora < 120000 ? posicion : null;
-    if (comparte && !gps) gps = await pedirPosicion(6000).catch(() => null);
     try {
       const r = await postApi<{ row?: Obra }>({
         action: 'editObra', id: txt(obra, 'ID'), updates: cambios,
-        ubicacion: gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : undefined,
       });
       if (r.status !== 'success') throw new Error(mensajeServidor(r.message));
       onGuardada(r.data?.row || { ...obra, ...cambios });
@@ -743,8 +739,7 @@ function Radar({ usuario }: { usuario: Usuario }) {
     <>
       {comparte && !ubic.aceptado && (
         <div className="aviso-ubic" role="region" aria-label="Aviso de ubicación">
-          <p><strong>El radar usa tu ubicación.</strong> Mientras lo tienes abierto en horario laboral (lunes a sábado, 8:00 a 20:00),
-            jefatura ve en el mapa dónde estás y dónde registraste cada visita. Con la app cerrada no se comparte nada.</p>
+          <p><strong>El radar usa tu ubicación</strong> para geolocalizarte en el mapa.</p>
           <button className="btn btn-dark btn-small" onClick={ubic.aceptar}>Entendido, activar</button>
         </div>
       )}
@@ -754,7 +749,7 @@ function Radar({ usuario }: { usuario: Usuario }) {
       )}
       {vista.tipo === 'obra' && obraAbierta && (
         <FichaObra key={txt(obraAbierta, 'ID') + txt(obraAbierta, 'Última Actualización')} usuario={usuario} obra={obraAbierta} avisar={avisar}
-          posicion={ubic.posicion} comparte={comparte && ubic.aceptado}
+          posicion={ubic.posicion}
           onVolver={() => setVista({ tipo: 'lista' })}
           onGuardada={o => setObras(prev => prev.map(x => txt(x, 'ID') === txt(o, 'ID') ? o : x))} />
       )}

@@ -3,7 +3,7 @@
 // - Ubica cada obra en el mapa (columnas Latitud, Longitud y "Ubicación en mapa" de Consolidado).
 //   Lo hace solo: al crear una obra, al cambiarle la dirección y cada hora para las que falten.
 // - Guarda dónde está cada vendedor mientras usa la app (hoja "Ubicaciones", una fila por vendedor)
-//   y dónde estaba al registrar cada visita (columnas nuevas en "Registro de Visitas").
+//   (las visitas ya no guardan GPS ni distancia a la obra).
 //
 // Para empezar: en el editor elige prepararMapa y presiona Ejecutar (una sola vez).
 // =====================================================================
