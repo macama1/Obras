@@ -188,15 +188,15 @@ export default function Mapa({ obras, veVendedor, ubicaciones, miPosicion, onAbr
 
   return (
     <div className="mapa-wrap">
-      <div className="mapa-leyenda" role="group" aria-label="Mostrar en el mapa">
+      {ORDEN_GRUPOS.filter(g => porGrupo[g]).length > 1 && <div className="mapa-leyenda" role="group" aria-label="Mostrar en el mapa">
         {ORDEN_GRUPOS.filter(g => porGrupo[g]).map(g => (
           <button key={g} type="button" className="chip chip-sm ley" aria-pressed={!ocultos.has(g)} onClick={() => alternar(g)}>
             <i style={{ background: colorGrupo[g] }} />{nombreGrupo[g]} <b>{porGrupo[g]}</b>
           </button>
         ))}
-      </div>
+      </div>}
       <div className="mapa-caja">
-        <div ref={caja} className="mapa" aria-label="Mapa de obras" />
+        <div ref={caja} className="mapa" aria-label="Mapa" />
         <button type="button" className="mapa-yo" onClick={irAMi} disabled={buscandoYo} title="Ir a mi ubicación">
           {buscandoYo ? '…' : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>}
           <span>Dónde estoy</span>

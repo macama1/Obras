@@ -299,3 +299,17 @@ details.more[open] summary::before { content: '−'; }
 .aviso-ubic { background: #eaf1fa; border: 1px solid #b9cfe9; border-radius: var(--radius); padding: 12px 14px; margin: 0 0 16px;
   display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .aviso-ubic p { margin: 0; font-size: 14px; flex: 1 1 320px; }
+
+/* Inicio: elegir entre Radar de Obras y FEDS */
+.universos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; }
+.universo { display: flex; flex-direction: column; gap: 8px; text-align: left; background: var(--paper); border: 1px solid var(--line);
+  border-top: 6px solid var(--amber); border-radius: var(--radius); padding: 22px 20px; cursor: pointer; font: inherit; color: inherit; min-height: 170px; }
+.universo + .universo { border-top-color: var(--ink); }
+.universo:hover { border-color: var(--ink); }
+.universo:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.universo-t { font-family: var(--font-cond); font-size: 32px; font-weight: 700; line-height: 1.05; }
+.universo-d { color: var(--muted); font-size: 15px; }
+.universo-n { margin-top: auto; font-weight: 600; font-size: 14px; }
+@media (max-width: 560px) { .universos { grid-template-columns: 1fr; } .universo { min-height: 0; } }
+.seg-universo { margin: 0 0 12px; }
+.track-tag.canal { color: var(--muted); }
