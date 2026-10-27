@@ -337,6 +337,27 @@ function textoUbicacion(o: Obra) {
 }
 
 // Botón "Estoy en la obra": guarda la posición del teléfono como ubicación de la obra.
+// Comuna con autocompletado: al elegirla, la región se completa sola.
+function CampoComuna({ id, comuna, onElegir }: { id: string; comuna: string; onElegir: (comuna: string, region: string) => void }) {
+  const [texto, setTexto] = useState(comuna);
+  const opciones = useMemo(() => {
+    const q = normalizar(texto);
+    return q.length < 2 ? [] : todasLasComunas.filter(c => normalizar(c.comuna).includes(q))
+      .sort((a, b) => Number(!normalizar(a.comuna).startsWith(q)) - Number(!normalizar(b.comuna).startsWith(q)))
+      .map(c => ({ label: c.comuna, sub: c.region }));
+  }, [texto]);
+  return (
+    <Autocompletar id={id} valor={texto} placeholder="Escribe la comuna" opciones={opciones}
+      onTexto={setTexto} onElegir={o => { setTexto(o.label); onElegir(o.label, regionDeComuna(o.label)); }} />
+  );
+}
+
+// Actores de la obra: además de la empresa a la que le vendemos (la constructora).
+const ACTORES = [
+  { k: 'Mandante / Inmobiliaria', ayuda: 'dueño del proyecto; aparece en el permiso de edificación' },
+  { k: 'Arquitecto', ayuda: 'oficina o profesional; decide qué se especifica' },
+];
+
 function MarcarEnObra({ datos, onMarcar }: { datos: Obra; onMarcar: (p: Posicion) => void }) {
   const [buscando, setBuscando] = useState(false);
   const [error, setError] = useState('');
@@ -426,6 +447,20 @@ function FichaObra({ usuario, obra, posicion, comparte, onVolver, onGuardada, av
           <Chips etiqueta="¿Nos compran?" opciones={['Sí', 'No']} valor={txt(datos, 'Les Vendemos?')} onCambio={v => set('Les Vendemos?', v)} />
         </div>
         <div className="q">
+          <p className="q-title">Ubicación</p>
+          <label className="field"><span>Dirección</span>
+            <input className="input" value={crudo(datos, 'Dirección')} placeholder="Calle y número" onChange={e => set('Dirección', e.target.value)} /></label>
+          <label className="field" htmlFor="ficha-comuna"><span>Comuna {txt(datos, 'Región') && <small>{txt(datos, 'Región')}</small>}</span></label>
+          <CampoComuna id="ficha-comuna" comuna={txt(obra, 'Comuna')} onElegir={(c, r) => setDatos(x => ({ ...x, 'Comuna': c, 'Región': r || txt(x, 'Región') }))} />
+          {(cambios['Dirección'] !== undefined || cambios['Comuna'] !== undefined) && cambios['Latitud'] === undefined && (
+            <p className="auto-note">Al guardar, la obra se vuelve a ubicar en el mapa con la nueva dirección.</p>
+          )}
+          <MarcarEnObra datos={datos} onMarcar={p => {
+            setDatos(d => ({ ...d, ...conPosicion(p) }));
+            avisar(`Ubicación marcada (precisión ${p.precision} m). Guarda para confirmarla.`, p.precision > 100);
+          }} />
+        </div>
+        <div className="q">
           <label className="field">
             <span>Próximos pasos</span>
             <textarea className="textarea" value={crudo(datos, 'Próximos Pasos')} placeholder="Qué quedó pendiente y para cuándo"
@@ -440,8 +475,6 @@ function FichaObra({ usuario, obra, posicion, comparte, onVolver, onGuardada, av
           <summary>Datos de la obra</summary>
           <label className="field"><span>Nombre de la obra o punto de venta</span>
             <input className="input" value={crudo(datos, 'Obra / PDV')} onChange={e => set('Obra / PDV', e.target.value)} /></label>
-          <label className="field"><span>Dirección</span>
-            <input className="input" value={crudo(datos, 'Dirección')} onChange={e => set('Dirección', e.target.value)} /></label>
           <label className="field"><span>RUT de la empresa</span>
             <input className="input" value={crudo(datos, 'Rut Empresa')} onChange={e => set('Rut Empresa', e.target.value)} /></label>
           {esObra && <>
@@ -453,10 +486,10 @@ function FichaObra({ usuario, obra, posicion, comparte, onVolver, onGuardada, av
           </>}
           <label className="field"><span>Descripción</span>
             <textarea className="textarea" value={crudo(datos, 'Descripción de la obra o PDV')} onChange={e => set('Descripción de la obra o PDV', e.target.value)} /></label>
-          <MarcarEnObra datos={datos} onMarcar={p => {
-            setDatos(d => ({ ...d, ...conPosicion(p) }));
-            avisar(`Ubicación marcada (precisión ${p.precision} m). Guarda para confirmarla.`, p.precision > 100);
-          }} />
+          {esObra && ACTORES.map(a => (
+            <label key={a.k} className="field"><span>{a.k} <small>{a.ayuda}</small></span>
+              <input className="input" value={crudo(datos, a.k)} onChange={e => set(a.k, e.target.value)} /></label>
+          ))}
           {txt(obra, 'Acciones Última Reunion') && (
             <p className="q-help">Acciones de la última reunión: {txt(obra, 'Acciones Última Reunion')}</p>
           )}
@@ -481,7 +514,7 @@ const pareceRut = (v: string) => /^\d{1,2}\.?\d{3}\.?\d{3}-?[\dkK]$/.test(v.trim
 const nuevaVacia = (): Record<string, string> => ({
   'Empresa': '', 'Rut Empresa': '', 'Canal': '', 'Vendedor': '', 'Obra / PDV': '', 'Comuna': '', 'Región': '',
   'Dirección': '', 'Estado de Obra': '', 'Tipo Construcción': '', 'Les Vendemos?': '', 'Próximos Pasos': '',
-  'Contacto': '', 'Pisos': '', 'Descripción de la obra o PDV': '',
+  'Contacto': '', 'Pisos': '', 'Descripción de la obra o PDV': '', 'Mandante / Inmobiliaria': '', 'Arquitecto': '',
 });
 
 function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada, avisar }: {
@@ -645,6 +678,10 @@ function NuevaObra({ usuario, obras, clientes, textoInicial, onVolver, onCreada,
                 valor={d['Tipo Construcción']} onCambio={v => set('Tipo Construcción', v)} />
               <label className="field" style={{ marginTop: 14 }}><span>N° de pisos / casas</span>
                 <input className="input" inputMode="numeric" value={d['Pisos']} onChange={e => set('Pisos', e.target.value)} /></label>
+              {ACTORES.map(x => (
+                <label key={x.k} className="field" style={{ marginTop: 14 }}><span>{x.k} <small>{x.ayuda}</small></span>
+                  <input className="input" value={d[x.k] || ''} onChange={e => set(x.k, e.target.value)} /></label>
+              ))}
             </div>
           )}
           <div className="q">
