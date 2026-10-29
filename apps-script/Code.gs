@@ -128,7 +128,7 @@ function crearHojaUsuarios() {
     throw new Error('La hoja Usuarios ya existe; no se modificó.');
   }
   const hojaObras = libro.getSheetByName(NOMBRE_HOJA_MAESTRA);
-  const datos = hojaObras.getDataRange().getValues();
+  const datos = valoresHoja_(hojaObras);
   const col = datos[0].indexOf('Vendedor');
   const vistos = {};
   datos.slice(1).forEach(f => {
@@ -224,9 +224,18 @@ function getClientList() {
 // --- FUNCIÓN getAllData ---
 // Devuelve todas las obras de una vez. Leer la hoja cuesta lo mismo que antes
 // (getDataByRegion también la leía completa) y la app filtra localmente.
+// Todas las filas de una hoja, aunque tenga un filtro activo que oculte filas:
+// con filtro, getDataRange()/getLastRow() pueden quedarse cortos. Se recorta al último ID.
+function valoresHoja_(hoja) {
+  const v = hoja.getRange(1, 1, hoja.getMaxRows(), Math.max(hoja.getLastColumn(), 1)).getValues();
+  let fin = v.length;
+  while (fin > 1 && !String(v[fin - 1][COL_ID - 1]).trim()) fin--;
+  return v.slice(0, fin);
+}
+
 function getAllData(usuario) {
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
-  const datos = hoja.getDataRange().getValues();
+  const datos = valoresHoja_(hoja);
   const encabezados = datos.shift();
   const colVendedor = encabezados.indexOf('Vendedor');
   return datos
@@ -246,7 +255,7 @@ function filaAObjeto_(encabezados, fila) {
 // --- FUNCIÓN getDataByRegion ---
 function getDataByRegion(region, usuario) {
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
-  const datos = hoja.getDataRange().getValues();
+  const datos = valoresHoja_(hoja);
   const encabezados = datos.shift(); // Quita encabezados
   
   const colRegionIndex = encabezados.indexOf("Región");
@@ -285,7 +294,7 @@ function editObra(id, updates, usuario, ubicacion) {
 
 function editObraSinLock_(id, updates, usuario, ubicacion) {
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
-  const datos = hoja.getDataRange().getValues();
+  const datos = valoresHoja_(hoja);
   const encabezados = datos[0];
   
   const filaIndex = datos.slice(1).findIndex(fila => String(fila[COL_ID - 1]) === String(id));
@@ -401,7 +410,7 @@ function createNewObraSinLock_(data, usuario) {
 
   const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
 
-  const todo = hoja.getDataRange().getValues();
+  const todo = valoresHoja_(hoja);
   const repetida = buscarObraRepetida_(todo, todo[0], data);
   if (repetida) {
     const idRep = repetida[COL_ID - 1];
@@ -415,7 +424,11 @@ function createNewObraSinLock_(data, usuario) {
     throw new Error(`Esa obra ya está registrada con otro vendedor (${idRep}). Si te corresponde, pide a jefatura que te la asigne.`);
   }
 
-  const todosLosIds = hoja.getRange(2, COL_ID, Math.max(hoja.getLastRow() - 1, 1), 1).getValues().flat();
+  // Con un filtro activo en la hoja, getLastRow()/appendRow() pueden no contar las filas ocultas
+  // y la obra nueva se pierde o pisa a otra. Por eso se recorre la columna ID completa.
+  const todosLosIds = hoja.getRange(2, COL_ID, hoja.getMaxRows() - 1, 1).getValues().flat();
+  let ultimaFilaConId = 1;
+  todosLosIds.forEach((id, i) => { if (String(id).trim()) ultimaFilaConId = i + 2; });
   
   let maxNumero = 0;
   todosLosIds.forEach(id => {
@@ -453,13 +466,19 @@ function createNewObraSinLock_(data, usuario) {
     return data[encabezado] || '';
   });
   
-  hoja.appendRow(nuevaFila);
+  const filaDestino = ultimaFilaConId + 1;
+  if (filaDestino > hoja.getMaxRows()) hoja.insertRowsAfter(hoja.getMaxRows(), 50);
+  hoja.getRange(filaDestino, 1, 1, nuevaFila.length).setValues([nuevaFila]);
   SpreadsheetApp.flush();
+  // Comprobar que quedó escrita; si no, el vendedor ve el error en vez de creer que se guardó.
+  if (String(hoja.getRange(filaDestino, COL_ID).getValue()) !== nuevoId) {
+    throw new Error('No se pudo guardar en la planilla. Intenta de nuevo y, si se repite, avisa a jefatura.');
+  }
 
   // Ubicar la obra nueva en el mapa (si el vendedor no mandó su GPS desde la obra).
   if (!data['Latitud']) {
     try {
-      const filaNueva = hoja.getLastRow();
+      const filaNueva = filaDestino;
       ubicarFilaEnMapa_(hoja, filaNueva);
       const ubicada = hoja.getRange(filaNueva, 1, 1, encabezados.length).getValues()[0];
       ['Latitud', 'Longitud', 'Ubicación en mapa'].forEach(k => {
