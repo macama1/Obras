@@ -4,7 +4,7 @@ import { auth } from './firebase';
 import { postApi, mensajeServidor } from './api';
 import Login from './Login';
 import {
-  canalesObras, canalesFeds, vendedorOptions, tipoConstruccionOptions, normalizar, todasLasComunas, regionDeComuna,
+  canalesObras, canalesFeds, canalesConstructora, vendedorOptions, tipoConstruccionOptions, normalizar, todasLasComunas, regionDeComuna,
   etapasObra, etapasCortas, estadosEspeciales, universoDe, nombreUniverso, esCasaMatriz, CASA_MATRIZ, type Universo,
 } from './datos';
 import { useUbicacion, pedirPosicion, distanciaMetros, type Posicion } from './ubicacion';
@@ -561,7 +561,7 @@ function NuevaObra({ usuario, universo, obras, clientes, textoInicial, onVolver,
   const asignables = usuario.rol === 'jefatura' ? vendedorOptions : [usuario.vendedor, ...(usuario.equipo || [])];
   const [matriz, setMatriz] = useState(false);
   const esObra = universo === 'obras' && !matriz;
-  const canales = universo === 'obras' ? canalesObras : canalesFeds;
+  const canales = universo === 'feds' ? canalesFeds : matriz ? canalesConstructora : canalesObras;
   const arriba = useRef<HTMLDivElement>(null);
   useEffect(() => { arriba.current?.scrollIntoView({ block: 'start' }); }, [paso]);
 
@@ -659,7 +659,7 @@ function NuevaObra({ usuario, universo, obras, clientes, textoInicial, onVolver,
               <p className="q-title">¿Qué vas a agregar?</p>
               <div className="chips" role="group" aria-label="Qué vas a agregar">
                 <button type="button" className="chip" aria-pressed={!matriz} onClick={() => { setMatriz(false); if (normalizar(d['Obra / PDV']) === normalizar(CASA_MATRIZ)) set('Obra / PDV', ''); }}>Una obra</button>
-                <button type="button" className="chip" aria-pressed={matriz} onClick={() => { setMatriz(true); if (!d['Obra / PDV'].trim()) set('Obra / PDV', CASA_MATRIZ); }}>Casa matriz</button>
+                <button type="button" className="chip" aria-pressed={matriz} onClick={() => { setMatriz(true); setD(x => ({ ...x, 'Obra / PDV': x['Obra / PDV'].trim() ? x['Obra / PDV'] : CASA_MATRIZ, 'Canal': canalesConstructora.includes(x['Canal']) ? x['Canal'] : '' })); }}>Casa matriz</button>
               </div>
               {matriz && <p className="auto-note">La casa matriz queda en el radar con su dirección y contacto, pero no se cuenta como obra.</p>}
             </div>

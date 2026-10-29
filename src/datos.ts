@@ -1,9 +1,12 @@
 // Listas fijas del radar: canales, vendedores, estados, tipos y regiones/comunas de Chile.
 // Dos universos: Obras (constructoras; las obras tienen etapas y terminan) y
 // FEDS (Ferreterías, Distribuidores, Especialistas y Sub distribuidores; siempre están, solo se visitan).
-export const canalesObras = ['Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande', 'Particular', 'Industrial'];
-export const canalesFeds = ['Ferretería', 'Distribuidor', 'Sub Distribuidor', 'Especialista', 'Instalador', 'Distribuidor Grandes Supericies'];
-export const canalOptions = [...canalesObras, ...canalesFeds];
+export const canalesConstructora = ['Constructora Pequeña', 'Constructora Mediana', 'Constructora Grande'];
+// Particular e Instalador pueden ser una obra (con etapa) o un cliente para visitar (FEDS).
+export const canalesAmbos = ['Particular', 'Instalador'];
+export const canalesObras = [...canalesConstructora, ...canalesAmbos];
+export const canalesFeds = ['Ferretería', 'Distribuidor', 'Sub Distribuidor', 'Especialista', 'Distribuidor Grandes Supericies', 'Industrial', ...canalesAmbos];
+export const canalOptions = [...new Set([...canalesObras, ...canalesFeds])];
 export const vendedorOptions = [
   "Andres Pacheco", "Cristian Maldonado", "Eduardo Arias", "Jorge Nario", "Lissett Santana", "Manuel Urzúa", "Mauricio Carvajal", "Mónica Valencia", "Vendedor General CA", "Vendedor General Peg&Mort (RH)"
 ];
@@ -81,18 +84,19 @@ export const colorGrupo: Record<Grupo, string> = {
 
 export type Universo = 'obras' | 'feds';
 export const nombreUniverso: Record<Universo, string> = { obras: 'Radar de Obras', feds: 'FEDS' };
-const esCanalFeds = (canal: string) => canalesFeds.some(c => normalizar(c) === normalizar(canal));
-// A qué universo pertenece una fila: si tiene etapa de obra es Obra; si no, manda el canal.
-// Sin canal ni etapa: "No Aplica" es FEDS, lo demás queda en Obras para completar su etapa.
+const esDe = (lista: string[], canal: string) => lista.some(c => normalizar(c) === normalizar(canal));
+// A qué universo pertenece una fila:
+// - con etapa de obra (No Iniciada … Terminada, Detenida) es Obra;
+// - constructora sin etapa: sigue en Obras ("No Aplica" = su casa matriz; "Sin Información" = falta la etapa);
+// - Particular, Instalador o sin canal: "No Aplica" o vacío es FEDS; "Sin Información" queda en Obras;
+// - Ferretería, Distribuidor, Especialista, Industrial…: FEDS.
 export function universoDe(estado: string, canal: string): Universo {
   if (aplica(estado)) return 'obras';
-  if (esCanalFeds(canal)) return 'feds';
-  if (normalizar(canal)) return 'obras';
-  return normalizar(estado) === 'no aplica' ? 'feds' : 'obras';
+  if (esDe(canalesConstructora, canal)) return 'obras';
+  if (esDe(canalesFeds, canal) && !esDe(canalesAmbos, canal)) return 'feds';
+  return normalizar(estado) === 'sin informacion' ? 'obras' : 'feds';
 }
 
-// En el Radar de Obras, una fila marcada "No Aplica" es la casa matriz de la constructora:
-// sirve tenerla en el radar (dirección, contacto), pero no se cuenta como obra.
 export const CASA_MATRIZ = 'Casa Matriz';
 export const esCasaMatriz = (estado: string, canal: string) =>
   universoDe(estado, canal) === 'obras' && normalizar(estado) === 'no aplica';
