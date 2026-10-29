@@ -5,7 +5,7 @@ import { postApi, mensajeServidor } from './api';
 import Login from './Login';
 import {
   canalesObras, canalesFeds, vendedorOptions, tipoConstruccionOptions, normalizar, todasLasComunas, regionDeComuna,
-  etapasObra, etapasCortas, estadosEspeciales, universoDe, nombreUniverso, type Universo,
+  etapasObra, etapasCortas, estadosEspeciales, universoDe, nombreUniverso, esCasaMatriz, CASA_MATRIZ, type Universo,
 } from './datos';
 import { useUbicacion, pedirPosicion, distanciaMetros, type Posicion } from './ubicacion';
 import type { UbicacionVendedor } from './Mapa';
@@ -21,6 +21,7 @@ interface Usuario { vendedor: string; rol: 'vendedor' | 'jefe zonal' | 'jefatura
 
 const txt = (o: Obra | null | undefined, k: string) => String(o?.[k] ?? '').trim();
 const universoObra = (o: Obra) => universoDe(txt(o, 'Estado de Obra'), txt(o, 'Canal'));
+const casaMatriz = (o: Obra) => esCasaMatriz(txt(o, 'Estado de Obra'), txt(o, 'Canal'));
 // Para los campos de texto: sin recortar, o los espacios al final se borran mientras se escribe.
 const crudo = (o: Obra | null | undefined, k: string) => String(o?.[k] ?? '');
 const DIA = 86400000;
@@ -161,8 +162,10 @@ function ResumenVendedor({ nombre, obras, universo }: { nombre: string; obras: O
   }
   return (
     <div className="resumen" aria-live="polite">
-      <p className="resumen-t"><strong>{nombre}</strong> tiene <strong>{obras.length}</strong> {universo === 'obras'
-        ? (obras.length === 1 ? 'obra' : 'obras') : (obras.length === 1 ? 'FEDS' : 'FEDS')}</p>
+      {universo === 'obras' ? (() => {
+        const cm = obras.filter(casaMatriz).length, n = obras.length - cm;
+        return <p className="resumen-t"><strong>{nombre}</strong> tiene <strong>{n}</strong> {n === 1 ? 'obra' : 'obras'}{cm > 0 && <> y <strong>{cm}</strong> {cm === 1 ? 'casa matriz' : 'casas matrices'}</>}</p>;
+      })() : <p className="resumen-t"><strong>{nombre}</strong> tiene <strong>{obras.length}</strong> FEDS</p>}
       <div className="resumen-g">
         {universo === 'obras'
           ? ETAPAS_RESUMEN.map(x => (
@@ -186,6 +189,7 @@ function MisObras({ usuario, universo, obras, cargando, error, posicion, onAbrir
   const [busqueda, setBusqueda] = useState('');
   const [vendedor, setVendedor] = useState('');
   const [orden, setOrden] = useState<'pendientes' | 'recientes'>('pendientes');
+  const [tipo, setTipo] = useState<'todo' | 'obras' | 'matriz'>('todo');
   const [limite, setLimite] = useState(40);
   const [modo, setModo] = useState<'lista' | 'mapa'>(() => { try { return localStorage.getItem('radar-modo') === 'mapa' ? 'mapa' : 'lista'; } catch { return 'lista'; } });
   const [ubicaciones, setUbicaciones] = useState<UbicacionVendedor[] | null>(null);
@@ -216,6 +220,7 @@ function MisObras({ usuario, universo, obras, cargando, error, posicion, onAbrir
     const q = normalizar(busqueda);
     const filtradas = obras.filter(o => {
       if (vendedor && normalizar(txt(o, 'Vendedor')) !== normalizar(vendedor)) return false;
+      if (esObras && tipo !== 'todo' && casaMatriz(o) !== (tipo === 'matriz')) return false;
       if (!q) return true;
       return ['Empresa', 'Obra / PDV', 'Comuna', 'ID', 'Dirección'].some(k => normalizar(txt(o, k)).includes(q));
     });
@@ -224,10 +229,11 @@ function MisObras({ usuario, universo, obras, cargando, error, posicion, onAbrir
       const da = dias(a) ?? 99999, db = dias(b) ?? 99999;
       return orden === 'pendientes' ? db - da : da - db;
     });
-  }, [obras, busqueda, vendedor, orden]);
+  }, [obras, busqueda, vendedor, orden, tipo, esObras]);
 
   const atrasadas = useMemo(() => obras.filter(o => { const d = diasDesde(o['Última Actualización']); return d === null || d > 45; }).length, [obras]);
   const cosa = esObras ? 'obras' : 'FEDS';
+  const nMatriz = useMemo(() => (esObras ? obras.filter(casaMatriz).length : 0), [obras, esObras]);
   const titulo = usuario.rol === 'jefatura' ? (esObras ? 'Todas las obras' : 'Todos los FEDS')
     : usuario.rol === 'jefe zonal' ? `Tus ${cosa} y las de tu equipo` : `Tus ${cosa}`;
 
@@ -241,7 +247,7 @@ function MisObras({ usuario, universo, obras, cargando, error, posicion, onAbrir
       <h1 className="rc-title">{titulo}</h1>
       <p className="rc-sub">
         {cargando ? `Cargando ${cosa}…` : esObras
-          ? `${obras.length} obras. ${atrasadas} llevan más de 45 días sin actualizar.`
+          ? `${obras.length - nMatriz} obras y ${nMatriz} casas matrices. ${atrasadas} llevan más de 45 días sin actualizar.`
           : `${obras.length} ferreterías, distribuidores y especialistas. ${atrasadas} llevan más de 45 días sin visita.`}
       </p>
 
@@ -268,6 +274,12 @@ function MisObras({ usuario, universo, obras, cargando, error, posicion, onAbrir
           <span className="label">Ordenar:</span>
           <button className="chip chip-sm" aria-pressed={orden === 'pendientes'} onClick={() => setOrden('pendientes')}>Más atrasadas primero</button>
           <button className="chip chip-sm" aria-pressed={orden === 'recientes'} onClick={() => setOrden('recientes')}>Recién actualizadas</button>
+        </>}
+        {esObras && nMatriz > 0 && <>
+          <span className="label">Ver:</span>
+          {([['todo', 'Todo'], ['obras', 'Solo obras'], ['matriz', 'Casas matrices']] as const).map(([k, l]) => (
+            <button key={k} className="chip chip-sm" aria-pressed={tipo === k} onClick={() => setTipo(k)}>{l}</button>
+          ))}
         </>}
         {modo === 'mapa' && veVarias && (
           <button className="chip chip-sm" aria-pressed={verVendedores} onClick={() => setVerVendedores(v => !v)}>Mostrar vendedores</button>
@@ -321,7 +333,9 @@ function MisObras({ usuario, universo, obras, cargando, error, posicion, onAbrir
                     <span className="rc-row-meta">
                       <span>{[txt(o, 'Comuna'), usuario.rol === 'jefatura' ? txt(o, 'ID') : ''].filter(Boolean).join(', ')}</span>
                       {veVarias && <span>{txt(o, 'Vendedor')}</span>}
-                      {esObras ? <MiniEtapas estado={txt(o, 'Estado de Obra')} /> : txt(o, 'Canal') && <span className="track-tag canal">{txt(o, 'Canal')}</span>}
+                      {esObras
+                        ? (casaMatriz(o) ? <span className="track-tag canal">Casa matriz</span> : <MiniEtapas estado={txt(o, 'Estado de Obra')} />)
+                        : txt(o, 'Canal') && <span className="track-tag canal">{txt(o, 'Canal')}</span>}
                     </span>
                   </button>
                 );
@@ -403,8 +417,9 @@ function FichaObra({ usuario, universo, obra, posicion, onVolver, onGuardada, av
   const [datos, setDatos] = useState<Obra>(obra);
   const [guardando, setGuardando] = useState(false);
   const set = (k: string, v: string) => setDatos(d => ({ ...d, [k]: v }));
-  // Las obras tienen etapa; los FEDS no (siempre están, solo se visitan).
-  const esObra = universo === 'obras';
+  // Las obras tienen etapa; los FEDS y las casas matrices no.
+  const matriz = universo === 'obras' && casaMatriz(obra);
+  const esObra = universo === 'obras' && !matriz;
 
   const cambios = useMemo(() => {
     const c: Record<string, string> = {};
@@ -431,13 +446,14 @@ function FichaObra({ usuario, universo, obra, posicion, onVolver, onGuardada, av
 
   return (
     <>
-      <button className="btn-link back" onClick={onVolver}>‹ Volver a {esObra ? 'las obras' : 'los FEDS'}</button>
+      <button className="btn-link back" onClick={onVolver}>‹ Volver a {universo === 'obras' ? 'las obras' : 'los FEDS'}</button>
       <div className="sheet sheet-head">
         <div className="company">{txt(obra, 'Empresa')}</div>
         <h1 className="rc-title">{txt(obra, 'Obra / PDV') || 'Sin nombre'}</h1>
         <div className="meta">
           {usuario.rol === 'jefatura' && <span>Código {txt(obra, 'ID')}</span>}
-          {!esObra && txt(obra, 'Canal') && <span>{txt(obra, 'Canal')}</span>}
+          {matriz && <span>Casa matriz</span>}
+          {universo === 'feds' && txt(obra, 'Canal') && <span>{txt(obra, 'Canal')}</span>}
           <span>{[txt(obra, 'Dirección'), txt(obra, 'Comuna')].filter(Boolean).join(', ')}</span>
           {usuario.rol !== 'vendedor' && <span>{txt(obra, 'Vendedor')}</span>}
         </div>
@@ -486,8 +502,8 @@ function FichaObra({ usuario, universo, obra, posicion, onVolver, onGuardada, av
           </label>
         </div>
         <details className="more">
-          <summary>{esObra ? 'Datos de la obra' : 'Datos del punto de venta'}</summary>
-          <label className="field"><span>{esObra ? 'Nombre de la obra' : 'Nombre del punto de venta'}</span>
+          <summary>{esObra ? 'Datos de la obra' : matriz ? 'Datos de la casa matriz' : 'Datos del punto de venta'}</summary>
+          <label className="field"><span>{esObra ? 'Nombre de la obra' : matriz ? 'Nombre' : 'Nombre del punto de venta'}</span>
             <input className="input" value={crudo(datos, 'Obra / PDV')} onChange={e => set('Obra / PDV', e.target.value)} /></label>
           <label className="field"><span>RUT de la empresa</span>
             <input className="input" value={crudo(datos, 'Rut Empresa')} onChange={e => set('Rut Empresa', e.target.value)} /></label>
@@ -543,8 +559,9 @@ function NuevaObra({ usuario, universo, obras, clientes, textoInicial, onVolver,
   const [autoNota, setAutoNota] = useState('');
   const set = (k: string, v: string) => setD(x => ({ ...x, [k]: v }));
   const asignables = usuario.rol === 'jefatura' ? vendedorOptions : [usuario.vendedor, ...(usuario.equipo || [])];
-  const esObra = universo === 'obras';
-  const canales = esObra ? canalesObras : canalesFeds;
+  const [matriz, setMatriz] = useState(false);
+  const esObra = universo === 'obras' && !matriz;
+  const canales = universo === 'obras' ? canalesObras : canalesFeds;
   const arriba = useRef<HTMLDivElement>(null);
   useEffect(() => { arriba.current?.scrollIntoView({ block: 'start' }); }, [paso]);
 
@@ -587,7 +604,10 @@ function NuevaObra({ usuario, universo, obras, clientes, textoInicial, onVolver,
     if (!paso2Listo) { setPaso(2); return; }
     setGuardando(true);
     const data = { ...d };
-    if (!esObra) { data['Estado de Obra'] = data['Estado de Obra'] || 'No Aplica'; data['Tipo Construcción'] = data['Tipo Construcción'] || 'No Aplica'; }
+    if (!esObra) {
+      data['Estado de Obra'] = 'No Aplica'; data['Tipo Construcción'] = 'No Aplica';
+      if (matriz) { data['Pisos'] = ''; data['Mandante / Inmobiliaria'] = ''; data['Arquitecto'] = ''; }
+    }
     else if (!data['Estado de Obra']) data['Estado de Obra'] = 'Sin Información';
     try {
       const r = await postApi<Obra>({ action: 'createNewObra', data });
@@ -603,12 +623,12 @@ function NuevaObra({ usuario, universo, obras, clientes, textoInicial, onVolver,
   if (creada) {
     return (
       <div className="sheet done-box">
-        <p>{esObra ? 'Quedó agregada al radar' : 'Quedó agregado a FEDS'}</p>
+        <p>{universo === 'obras' ? 'Quedó agregada al radar' : 'Quedó agregado a FEDS'}</p>
         {usuario.rol === 'jefatura' && <span className="code">{txt(creada, 'ID')}</span>}
         <p style={{ color: 'var(--muted)' }}>{txt(creada, 'Obra / PDV')}, {txt(creada, 'Empresa')}</p>
         <div className="chips" style={{ justifyContent: 'center', marginTop: 16 }}>
-          <button className="btn btn-primary" onClick={() => { setCreada(null); setPaso(1); setD({ ...nuevaVacia(), 'Vendedor': usuario.rol === 'jefatura' ? '' : usuario.vendedor }); setComunaTexto(''); setAutoNota(''); }}>Agregar otra</button>
-          <button className="btn btn-ghost" onClick={onVolver}>{esObra ? 'Volver a las obras' : 'Volver a los FEDS'}</button>
+          <button className="btn btn-primary" onClick={() => { setCreada(null); setPaso(1); setMatriz(false); setD({ ...nuevaVacia(), 'Vendedor': usuario.rol === 'jefatura' ? '' : usuario.vendedor }); setComunaTexto(''); setAutoNota(''); }}>Agregar otra</button>
+          <button className="btn btn-ghost" onClick={onVolver}>{universo === 'obras' ? 'Volver a las obras' : 'Volver a los FEDS'}</button>
         </div>
       </div>
     );
@@ -617,8 +637,9 @@ function NuevaObra({ usuario, universo, obras, clientes, textoInicial, onVolver,
   return (
     <div ref={arriba}>
       <button className="btn-link back" onClick={onVolver}>‹ Cancelar</button>
-      <h1 className="rc-title">{esObra ? 'Agregar obra' : 'Agregar FEDS'}</h1>
-      <p className="rc-sub">{esObra ? 'Una obra nueva de una constructora.' : 'Una ferretería, distribuidor, sub distribuidor o especialista (casa matriz o sucursal).'}</p>
+      <h1 className="rc-title">{universo === 'feds' ? 'Agregar FEDS' : matriz ? 'Agregar casa matriz' : 'Agregar obra'}</h1>
+      <p className="rc-sub">{universo === 'feds' ? 'Una ferretería, distribuidor, sub distribuidor o especialista (casa matriz o sucursal).'
+        : matriz ? 'La oficina central de la constructora. Queda en el radar, pero no se cuenta como obra.' : 'Una obra nueva de una constructora.'}</p>
       <div className="steps" aria-label={`Paso ${paso} de 3`}>
         {['Empresa', 'Ubicación', 'Más detalles (opcional)'].map((s, i) => (
           <div key={s} className={i + 1 === paso ? 'now' : i + 1 < paso ? 'done' : ''}>{s}</div>
@@ -633,6 +654,16 @@ function NuevaObra({ usuario, universo, obras, clientes, textoInicial, onVolver,
               onTexto={v => set('Empresa', v)} onElegir={o => elegirEmpresa(o.label)} opciones={sugerenciasEmpresa} />
             {autoNota && <p className="auto-note">{autoNota}</p>}
           </div>
+          {universo === 'obras' && (
+            <div className="q">
+              <p className="q-title">¿Qué vas a agregar?</p>
+              <div className="chips" role="group" aria-label="Qué vas a agregar">
+                <button type="button" className="chip" aria-pressed={!matriz} onClick={() => { setMatriz(false); if (normalizar(d['Obra / PDV']) === normalizar(CASA_MATRIZ)) set('Obra / PDV', ''); }}>Una obra</button>
+                <button type="button" className="chip" aria-pressed={matriz} onClick={() => { setMatriz(true); if (!d['Obra / PDV'].trim()) set('Obra / PDV', CASA_MATRIZ); }}>Casa matriz</button>
+              </div>
+              {matriz && <p className="auto-note">La casa matriz queda en el radar con su dirección y contacto, pero no se cuenta como obra.</p>}
+            </div>
+          )}
           <div className="q">
             <p className="q-title">¿Qué tipo de cliente es?</p>
             <Chips etiqueta="Canal" opciones={canales} valor={d['Canal']} onCambio={v => set('Canal', v)} />
@@ -649,7 +680,7 @@ function NuevaObra({ usuario, universo, obras, clientes, textoInicial, onVolver,
       {paso === 2 && (
         <div className="sheet">
           <div className="q">
-            <label className="field"><span>{esObra ? 'Nombre de la obra' : 'Nombre del punto de venta'}</span>
+            <label className="field"><span>{esObra ? 'Nombre de la obra' : matriz ? 'Nombre' : 'Nombre del punto de venta'}</span>
               <input className="input" value={d['Obra / PDV']} autoFocus
                 placeholder={esObra ? 'Ej.: Edificio Los Almendros' : 'Ej.: Casa matriz, Sucursal Maipú'}
                 onChange={e => set('Obra / PDV', e.target.value)} /></label>
@@ -726,7 +757,7 @@ function NuevaObra({ usuario, universo, obras, clientes, textoInicial, onVolver,
 
 // ---------- Inicio: elegir radar ----------
 function ElegirRadar({ usuario, cuenta, cargando, onElegir }: {
-  usuario: Usuario; cuenta: Record<Universo, number>; cargando: boolean; onElegir: (u: Universo) => void;
+  usuario: Usuario; cuenta: Record<Universo | 'matriz', number>; cargando: boolean; onElegir: (u: Universo) => void;
 }) {
   const propio = usuario.rol === 'vendedor';
   const opciones: { u: Universo; t: string; d: string }[] = [
@@ -742,7 +773,9 @@ function ElegirRadar({ usuario, cuenta, cargando, onElegir }: {
           <button key={o.u} className="universo" onClick={() => onElegir(o.u)}>
             <span className="universo-t">{o.t}</span>
             <span className="universo-d">{o.d}</span>
-            <span className="universo-n">{cargando ? 'Cargando…' : `${cuenta[o.u]} ${propio ? 'en tu cartera' : 'en total'}`}</span>
+            <span className="universo-n">{cargando ? 'Cargando…' : o.u === 'obras'
+              ? `${cuenta.obras} obras y ${cuenta.matriz} casas matrices ${propio ? 'en tu cartera' : 'en total'}`
+              : `${cuenta.feds} ${propio ? 'en tu cartera' : 'en total'}`}</span>
           </button>
         ))}
       </div>
@@ -763,8 +796,8 @@ function Radar({ usuario }: { usuario: Usuario }) {
   const [vista, setVista] = useState<{ tipo: 'lista' } | { tipo: 'obra'; id: string } | { tipo: 'nueva'; texto: string }>({ tipo: 'lista' });
   const delUniverso = useMemo(() => universo ? obras.filter(o => universoObra(o) === universo) : [], [obras, universo]);
   const cuenta = useMemo(() => {
-    const c = { obras: 0, feds: 0 };
-    for (const o of obras) c[universoObra(o)]++;
+    const c = { obras: 0, feds: 0, matriz: 0 };
+    for (const o of obras) { if (casaMatriz(o)) c.matriz++; else c[universoObra(o)]++; }
     return c;
   }, [obras]);
   const [toast, setToast] = useState<{ m: string; error?: boolean } | null>(null);

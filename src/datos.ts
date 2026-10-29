@@ -72,7 +72,7 @@ export function grupoDe(estado: string): Grupo {
 export const aplica = (estado: string) => !['sin-info', 'no-aplica'].includes(grupoDe(estado));
 export const nombreGrupo: Record<Grupo, string> = {
   'activa': 'En construcción', 'no-iniciada': 'No iniciadas', 'terminada': 'Terminadas',
-  'detenida': 'Detenidas', 'sin-info': 'Sin información', 'no-aplica': 'No aplica',
+  'detenida': 'Detenidas', 'sin-info': 'Sin información', 'no-aplica': 'Casa matriz',
 };
 export const colorGrupo: Record<Grupo, string> = {
   'activa': '#e8a20c', 'no-iniciada': '#8a979c', 'terminada': '#1f2326',
@@ -90,3 +90,9 @@ export function universoDe(estado: string, canal: string): Universo {
   if (normalizar(canal)) return 'obras';
   return normalizar(estado) === 'no aplica' ? 'feds' : 'obras';
 }
+
+// En el Radar de Obras, una fila marcada "No Aplica" es la casa matriz de la constructora:
+// sirve tenerla en el radar (dirección, contacto), pero no se cuenta como obra.
+export const CASA_MATRIZ = 'Casa Matriz';
+export const esCasaMatriz = (estado: string, canal: string) =>
+  universoDe(estado, canal) === 'obras' && normalizar(estado) === 'no aplica';
