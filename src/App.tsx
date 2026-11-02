@@ -296,6 +296,9 @@ function MisObras({ usuario, universo, obras, cargando, error, posicion, onAbrir
           ))}
         </div>
       )}
+      {!veVarias && !cargando && obras.length > 0 && (
+        <ResumenVendedor universo={universo} nombre="Tu cartera" obras={obras} />
+      )}
       {veVarias && vendedor && !cargando && (
         <ResumenVendedor universo={universo} nombre={vendedor} obras={obras.filter(o => normalizar(txt(o, 'Vendedor')) === normalizar(vendedor))} />
       )}
