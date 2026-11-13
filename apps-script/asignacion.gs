@@ -6,7 +6,7 @@
 // - Si dos vendedores tienen a ese cliente en la región, se asigna al que tiene más obras de él.
 //   Si empatan, no se mueve y queda anotado para que jefatura decida.
 // - Todo queda en la hoja "Asignaciones automáticas" (para revisar o deshacer).
-// Corre una vez al mes, el día 9 a las 7:00 (después de la carga mensual del día 8),
+// Corre una vez al mes, el día 10 a las 7:00 (la carga mensual del día 8 puede terminar el 9),
 // y al terminar "Importar Ondac Iconstruye".
 // Para empezar: elige prepararAsignacion y presiona Ejecutar (una sola vez).
 // =====================================================================
@@ -22,13 +22,21 @@ function simularAsignacion() {
   Logger.log(asignarPorCarteraSinLock_(true));
 }
 
+// Todas las filas con algún dato, aunque la hoja tenga un filtro que oculte filas.
+function filasCompletas_(hoja) {
+  const v = hoja.getRange(1, 1, hoja.getMaxRows(), Math.max(hoja.getLastColumn(), 1)).getValues();
+  let fin = v.length;
+  while (fin > 1 && v[fin - 1].every(c => String(c).trim() === '')) fin--;
+  return v.slice(0, fin);
+}
+
 function prepararAsignacion() {
   hojaAsignaciones_();
-  // Reemplaza cualquier activador anterior (antes era diario) por uno mensual: día 9 a las 7:00.
+  // Reemplaza cualquier activador anterior por uno mensual: día 10 a las 7:00.
   ScriptApp.getProjectTriggers()
     .filter(t => t.getHandlerFunction() === 'asignarPorCartera')
     .forEach(t => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('asignarPorCartera').timeBased().onMonthDay(9).atHour(7).create();
+  ScriptApp.newTrigger('asignarPorCartera').timeBased().onMonthDay(10).atHour(7).create();
   Logger.log(asignarPorCartera());
 }
 
@@ -56,8 +64,9 @@ function asignarPorCarteraSinLock_(simular) {
   const libro = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO);
   const con = libro.getSheetByName(NOMBRE_HOJA_MAESTRA);
   const na = libro.getSheetByName(NOMBRE_HOJA_NO_ASIGNADAS);
-  const dc = con.getDataRange().getValues(), hc = dc[0].map(String);
-  const dn = na.getDataRange().getValues(), hn = dn[0].map(String);
+  // Lectura completa: con un filtro activo, getDataRange() puede no incluir las últimas filas.
+  const dc = filasCompletas_(con), hc = dc[0].map(String);
+  const dn = filasCompletas_(na), hn = dn[0].map(String);
   const C = n => hc.indexOf(n), N = n => hn.indexOf(n);
 
   // 1. Cartera actual: (RUT o nombre del cliente) + región -> { vendedor: cantidad de obras }
