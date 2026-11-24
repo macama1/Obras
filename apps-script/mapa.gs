@@ -1,6 +1,6 @@
 // =====================================================================
 // MAPA DEL RADAR
-// - Ubica cada obra en el mapa (columnas Latitud, Longitud y "Ubicación en mapa" de Consolidado).
+// - Ubica cada obra en el mapa (columnas Latitud, Longitud y "Ubicación en mapa" de Carteras).
 //   Lo hace solo: al crear una obra, al cambiarle la dirección y cada hora para las que falten.
 // - Guarda dónde está cada vendedor mientras usa la app (hoja "Ubicaciones", una fila por vendedor)
 //   (las visitas ya no guardan GPS ni distancia a la obra).
@@ -19,7 +19,7 @@ const UBIC_NO = 'No encontrada';
 // de cada hora y ubica el primer grupo de obras.
 function prepararMapa() {
   const libro = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO);
-  columnasMapa_(libro.getSheetByName(NOMBRE_HOJA_MAESTRA));
+  columnasMapa_(hojaCarteras_(libro));
   hojaUbicaciones_();
   prepararRegistroConGps_(libro.getSheetByName(NOMBRE_HOJA_REGISTRO));
   const yaProgramada = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'ubicarObrasPendientes');
@@ -36,7 +36,7 @@ function ubicarObrasPendientes() {
   if (!turno.tryLock(1000)) return;
   try {
     const inicio = Date.now();
-    const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
+    const hoja = hojaCarteras_();
     const c = columnasMapa_(hoja);
     const datos = hoja.getDataRange().getValues();
     const claveDir = f => [f[c.dir], f[c.comuna], f[c.region]].map(normalizarTexto).join('|');

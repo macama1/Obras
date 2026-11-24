@@ -1,6 +1,11 @@
 // ========= CONFIGURACIÓN HOJA MAESTRA =========
 const ID_HOJA_CONSOLIDADO = "1Am-KA1ziov7xUdpIvaHvpElWLR2aglcmpQTkjNoSyH4"; // Reemplaza con el ID real de tu Google Sheet
-const NOMBRE_HOJA_MAESTRA = "Consolidado";
+// Las tres hojas de la base se buscan por su ID interno (el número que sale en la URL como gid=),
+// no por nombre: así se pueden renombrar sin que la app deje de funcionar.
+const ID_PESTANA_CARTERAS = 654722780;    // "Carteras" (antes "Consolidado"): obras con vendedor
+const ID_PESTANA_ASIGNABLES = 1765312726; // "Asignables" (antes "No Asignadas"): sin vendedor todavía
+const ID_PESTANA_DESECHO = 396968722;     // "Desecho": Terminadas, Repetidas y No Asignables
+const NOMBRE_HOJA_MAESTRA = "Carteras";   // solo para mensajes
 const NOMBRE_HOJA_REGISTRO = "Registro de Visitas";
 const NOMBRE_HOJA_CLIENTES = "Clientes";
 
@@ -30,6 +35,16 @@ const NOMBRE_HOJA_USUARIOS = "Usuarios";
 const EXIGIR_LOGIN = false;
 
 // =============================================
+
+// Devuelve una hoja del libro por su ID interno (gid).
+function pestana_(libro, idPestana) {
+  const hoja = libro.getSheets().find(h => h.getSheetId() === idPestana);
+  if (!hoja) throw new Error('No se encontró la hoja con ID ' + idPestana + ' en la planilla del radar.');
+  return hoja;
+}
+function hojaCarteras_(libro) { return pestana_(libro || SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO), ID_PESTANA_CARTERAS); }
+function hojaAsignables_(libro) { return pestana_(libro || SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO), ID_PESTANA_ASIGNABLES); }
+function hojaDesecho_(libro) { return pestana_(libro || SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO), ID_PESTANA_DESECHO); }
 
 // Compara regiones sin tildes ni mayúsculas y acepta nombre corto/largo
 // ("Aysén" == "Aysén del General Carlos Ibáñez del Campo").
@@ -127,14 +142,14 @@ function crearHojaUsuarios() {
   if (libro.getSheetByName(NOMBRE_HOJA_USUARIOS)) {
     throw new Error('La hoja Usuarios ya existe; no se modificó.');
   }
-  const hojaObras = libro.getSheetByName(NOMBRE_HOJA_MAESTRA);
+  const hojaObras = hojaCarteras_(libro);
   const datos = valoresHoja_(hojaObras);
   const col = datos[0].indexOf('Vendedor');
   const vistos = {};
   datos.slice(1).forEach(f => {
     const nombre = String(f[col] || '').trim();
     const clave = normalizarTexto(nombre);
-    if (nombre && !vistos[clave] && clave !== 'sin asignar' && clave !== 'sin asignacion') vistos[clave] = nombre;
+    if (nombre && !vistos[clave] && ['sin asignar', 'sin asignacion', 'no asignable', 'asignable', 'sin cobertura', 'desechada'].indexOf(clave) === -1) vistos[clave] = nombre;
   });
   const hoja = libro.insertSheet(NOMBRE_HOJA_USUARIOS);
   const filas = [['Correo', 'Vendedor', 'Rol', 'Equipo']]
@@ -234,7 +249,7 @@ function valoresHoja_(hoja) {
 }
 
 function getAllData(usuario) {
-  const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
+  const hoja = hojaCarteras_();
   const datos = valoresHoja_(hoja);
   const encabezados = datos.shift();
   const colVendedor = encabezados.indexOf('Vendedor');
@@ -254,13 +269,13 @@ function filaAObjeto_(encabezados, fila) {
 
 // --- FUNCIÓN getDataByRegion ---
 function getDataByRegion(region, usuario) {
-  const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
+  const hoja = hojaCarteras_();
   const datos = valoresHoja_(hoja);
   const encabezados = datos.shift(); // Quita encabezados
   
   const colRegionIndex = encabezados.indexOf("Región");
   if (colRegionIndex === -1) {
-    throw new Error("No se encontró la columna 'Región' en la hoja Consolidado.");
+    throw new Error("No se encontró la columna 'Región' en la hoja Carteras.");
   }
 
   const colVendedor = encabezados.indexOf('Vendedor');
@@ -293,7 +308,7 @@ function editObra(id, updates, usuario, ubicacion) {
 }
 
 function editObraSinLock_(id, updates, usuario, ubicacion) {
-  const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
+  const hoja = hojaCarteras_();
   const datos = valoresHoja_(hoja);
   const encabezados = datos[0];
   
@@ -307,7 +322,7 @@ function editObraSinLock_(id, updates, usuario, ubicacion) {
   
   const filaNumeroReal = filaIndex + 2; 
 
-  // Actualizar la hoja "Consolidado"
+  // Actualizar la hoja "Carteras"
   for (const key in updates) {
     if (COLUMNAS_PROTEGIDAS.indexOf(key) !== -1) continue;
     if (usuario && !esJefatura_(usuario) && COLUMNAS_SOLO_JEFATURA.indexOf(key) !== -1) continue;
@@ -408,7 +423,7 @@ function createNewObraSinLock_(data, usuario) {
   const faltantes = obligatorios.filter(c => !String(data[c] || '').trim());
   if (faltantes.length) throw new Error('Faltan campos obligatorios: ' + faltantes.join(', '));
 
-  const hoja = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO).getSheetByName(NOMBRE_HOJA_MAESTRA);
+  const hoja = hojaCarteras_();
 
   const todo = valoresHoja_(hoja);
   const repetida = buscarObraRepetida_(todo, todo[0], data);

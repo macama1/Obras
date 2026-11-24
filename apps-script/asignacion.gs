@@ -1,7 +1,7 @@
 // =====================================================================
 // ASIGNACIÓN POR CARTERA
 // Una obra nueva de un cliente que un vendedor ya atiende en la misma región se le asigna sola
-// a ese vendedor y pasa de "No Asignadas" a "Consolidado".
+// a ese vendedor y pasa de "Asignables" a "Carteras".
 // - El cliente se reconoce por su RUT o por su nombre (sin "S.A.", "Ltda", "Constructora", etc.).
 // - Si dos vendedores tienen a ese cliente en la región, se asigna al que tiene más obras de él.
 //   Si empatan, no se mueve y queda anotado para que jefatura decida.
@@ -10,11 +10,11 @@
 // y al terminar "Importar Ondac Iconstruye".
 // Para empezar: elige prepararAsignacion y presiona Ejecutar (una sola vez).
 // =====================================================================
-const NOMBRE_HOJA_NO_ASIGNADAS = 'No Asignadas';
 const NOMBRE_HOJA_ASIGNACIONES = 'Asignaciones automáticas';
 // "Sin Cobertura" también: si un vendedor ya atiende a ese cliente en la región, sí hay cobertura.
-const VENDEDORES_PENDIENTES = ['sin asignacion', 'sin asignar', 'asignable', 'sin cobertura', ''];
-const VENDEDORES_SIN_CARTERA = ['sin asignacion', 'sin asignar', 'asignable', 'sin cobertura', 'desechada', ''];
+// "No Asignable" no: es una decisión de no asignarla (y esa obra pasa a Desecho).
+const VENDEDORES_PENDIENTES = ['sin asignar', 'asignable', 'sin cobertura', ''];
+const VENDEDORES_SIN_CARTERA = ['sin asignacion', 'sin asignar', 'no asignable', 'asignable', 'sin cobertura', 'desechada', ''];
 const ESTADOS_NO_ASIGNABLES = ['terminada', 'repetida', 'desechada'];
 
 // Muestra en el registro qué haría, sin escribir nada.
@@ -62,8 +62,8 @@ function asignarPorCartera() {
 
 function asignarPorCarteraSinLock_(simular) {
   const libro = SpreadsheetApp.openById(ID_HOJA_CONSOLIDADO);
-  const con = libro.getSheetByName(NOMBRE_HOJA_MAESTRA);
-  const na = libro.getSheetByName(NOMBRE_HOJA_NO_ASIGNADAS);
+  const con = hojaCarteras_(libro);
+  const na = hojaAsignables_(libro);
   // Lectura completa: con un filtro activo, getDataRange() puede no incluir las últimas filas.
   const dc = filasCompletas_(con), hc = dc[0].map(String);
   const dn = filasCompletas_(na), hn = dn[0].map(String);
@@ -81,7 +81,7 @@ function asignarPorCarteraSinLock_(simular) {
     if (nom) sumar('n:' + nom + '|' + reg, v);
   });
 
-  // 2. Obras pendientes de No Asignadas que son de un cliente con cartera en su región.
+  // 2. Obras pendientes de Asignables que son de un cliente con cartera en su región.
   const aMover = [], registro = [];
   let empates = 0, repetidas = 0;
   const filasCon = dc.slice(); // para detectar repetidas también entre las que se van moviendo
@@ -108,7 +108,7 @@ function asignarPorCarteraSinLock_(simular) {
     const rep = buscarObraRepetida_(filasCon, hc, datos);
     if (rep) {
       repetidas++;
-      registro.push(base.concat([rep[COL_ID - 1], 'No se movió: ya está en Consolidado (' + rep[C('Vendedor')] + ')']));
+      registro.push(base.concat([rep[COL_ID - 1], 'No se movió: ya está en Carteras (' + rep[C('Vendedor')] + ')']));
       return;
     }
     const motivo = 'Cliente de ' + ranking[0][0] + ' en la región (por ' + via + ', ' + ranking[0][1] + ' obra' + (ranking[0][1] === 1 ? '' : 's') +
@@ -126,7 +126,7 @@ function asignarPorCarteraSinLock_(simular) {
       '\n' + registro.slice(0, 10).map(r => r.join(' | ')).join('\n');
   }
 
-  // 3. Pasar a Consolidado (por nombre de columna) con código nuevo.
+  // 3. Pasar a Carteras (por nombre de columna) con código nuevo.
   if (aMover.length) {
     let max = 0;
     dc.slice(1).forEach(f => { const m = String(f[COL_ID - 1]).match(/\d+$/); if (m) max = Math.max(max, parseInt(m[0], 10)); });
@@ -142,7 +142,7 @@ function asignarPorCarteraSinLock_(simular) {
     let ancho = hc.length;
     while (ancho > 0 && !hc[ancho - 1]) ancho--;
     con.getRange(ultima + 2, 1, filas.length, ancho).setValues(filas.map(f => f.slice(0, ancho)));
-    // Sacarlas de No Asignadas (de abajo hacia arriba para no correr las filas).
+    // Sacarlas de Asignables (de abajo hacia arriba para no correr las filas).
     aMover.map(x => x.filaNa).sort((a, b) => b - a).forEach(n => na.deleteRow(n));
     aMover.forEach(x => registro.push(x.base.concat([x.id, x.motivo + ' → ' + x.datos['Vendedor']])));
     // Que el vendedor vea en su historial cuándo le llegó.
@@ -163,7 +163,7 @@ function asignarPorCarteraSinLock_(simular) {
     if (nuevas.length) hoja.getRange(hoja.getLastRow() + 1, 1, nuevas.length, 7).setValues(nuevas);
   }
   SpreadsheetApp.flush();
-  return 'Asignadas y movidas a Consolidado: ' + aMover.length + '. Empates para revisar: ' + empates + '. Ya estaban en Consolidado: ' + repetidas + '.';
+  return 'Asignadas y movidas a Carteras: ' + aMover.length + '. Empates para revisar: ' + empates + '. Ya estaban en Carteras: ' + repetidas + '.';
 }
 
 // Misma regla de códigos que al crear desde la app: c constructora, f ferretería, d distribuidor, etc.
@@ -190,8 +190,8 @@ function hojaAsignaciones_() {
   return hoja;
 }
 
-// Copia una fila de "No Asignadas" a las columnas de "Consolidado" por nombre de columna
-// (las dos hojas no tienen las mismas columnas). La usa "Mover Datos a Consolidado".
+// Copia una fila de una hoja a las columnas de otra por nombre de columna (Asignables → Carteras,
+// Carteras/Asignables → Desecho). La usan "Mover Datos a Carteras" y el paso diario a Desecho.
 function filaParaConsolidado_(filaNa, encNa, encCon) {
   const datos = {};
   encNa.forEach((h, j) => { if (h) datos[String(h)] = filaNa[j]; });
