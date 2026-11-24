@@ -1,13 +1,13 @@
 // Menú "✨ Herramientas" > "Importar Ondac Iconstruye".
-// Copia de "Traspasadas" a "No Asignadas" las obras que no están, por NOMBRE de columna
+// Copia de "Traspasadas" a "Asignables" las obras que no están, por NOMBRE de columna
 // (las dos hojas no tienen las mismas columnas), y después asigna solas las de clientes con cartera.
 function copiarYLimpiarTraspasar() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetOrigen = ss.getSheetByName("Traspasadas");
-  const sheetDestino = ss.getSheetByName("No Asignadas");
+  const sheetDestino = hojaAsignables_(ss);
 
   if (!sheetOrigen || !sheetDestino) {
-    SpreadsheetApp.getUi().alert("Error: No se encontró la hoja 'Traspasadas' o 'No Asignadas'.");
+    SpreadsheetApp.getUi().alert("Error: No se encontró la hoja 'Traspasadas'.");
     return;
   }
 
@@ -18,7 +18,7 @@ function copiarYLimpiarTraspasar() {
   const datosDestino = sheetDestino.getLastRow() > 1
     ? sheetDestino.getRange(2, 1, sheetDestino.getLastRow() - 1, sheetDestino.getLastColumn()).getValues() : [];
 
-  // Valores ya existentes en No Asignadas (para evitar duplicados): obra, dirección y AID.
+  // Valores ya existentes en Asignables (para evitar duplicados): obra, dirección y AID.
   const col = (enc, n) => enc.indexOf(n);
   const setDe = n => new Set(datosDestino.map(r => r[col(encDestino, n)]).filter(v => v !== "" && v !== undefined));
   const setObra = setDe('Obra / PDV'), setDir = setDe('Dirección'), setAid = setDe('AID');

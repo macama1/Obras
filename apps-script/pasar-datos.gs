@@ -1,25 +1,20 @@
-// Menú "✨ Herramientas" > "Mover Datos a Consolidado".
-// Pasa a Consolidado las filas de "No Asignadas" que ya tienen vendedor.
+// Menú "✨ Herramientas" > "Mover Datos a Consolidado" (hoy "Carteras").
+// Pasa a Carteras las filas de "Asignables" que ya tienen un vendedor real.
 // Arreglo: antes copiaba la fila por posición y, como las dos hojas no tienen las mismas columnas
 // (No Asignadas tiene "Observaciones de Compra" y "M²"), las filas llegaban corridas
 // (la dirección en RUT, el RUT en Acciones...). Ahora copia por nombre de columna.
 // También compara el AID con la columna AID de Consolidado (antes miraba Monto Presupuesto).
 function moverNoAsignadasAConsolidado() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const baseSheet = ss.getSheetByName('No Asignadas');
-  const consolidadoSheet = ss.getSheetByName('Consolidado');
+  const baseSheet = hojaAsignables_(ss);
+  const consolidadoSheet = hojaCarteras_(ss);
   const ui = SpreadsheetApp.getUi();
-
-  if (!baseSheet || !consolidadoSheet) {
-    ui.alert('Error: Asegúrate de que existan las hojas "No Asignadas" y "Consolidado".');
-    return;
-  }
 
   const encCon = consolidadoSheet.getRange(1, 1, 1, consolidadoSheet.getLastColumn()).getValues()[0].map(String);
   const encBase = baseSheet.getRange(1, 1, 1, baseSheet.getLastColumn()).getValues()[0].map(String);
   const cCon = n => encCon.indexOf(n), cBase = n => encBase.indexOf(n);
 
-  // --- Cargar datos existentes en Consolidado ---
+  // --- Cargar datos existentes en Carteras ---
   const lastRowCon = consolidadoSheet.getLastRow();
   const dataCon = (lastRowCon > 1)
     ? consolidadoSheet.getRange(2, 1, lastRowCon - 1, consolidadoSheet.getLastColumn()).getValues()
@@ -42,14 +37,14 @@ function moverNoAsignadasAConsolidado() {
   });
   let nextID = maxNumero;
 
-  // Última fila con código en Consolidado (las filas vacías de más abajo no cuentan).
+  // Última fila con código en Carteras (las filas vacías de más abajo no cuentan).
   let ultimaCon = dataCon.length;
   while (ultimaCon > 0 && !String(dataCon[ultimaCon - 1][0]).trim()) ultimaCon--;
 
-  // --- Cargar datos de No Asignadas ---
+  // --- Cargar datos de Asignables ---
   const lastRowBase = baseSheet.getLastRow();
   if (lastRowBase < 2) {
-    ui.alert('La hoja "No Asignadas" no tiene datos.');
+    ui.alert('La hoja "Asignables" no tiene datos.');
     return;
   }
   const dataBase = baseSheet.getRange(2, 1, lastRowBase - 1, baseSheet.getLastColumn()).getValues();
@@ -66,11 +61,11 @@ function moverNoAsignadasAConsolidado() {
     const esDuplicado = (aid && existingAIDs.has(String(aid))) ||
                         (direccion && existingDirecciones.has(direccion));
 
+    // Solo pasan las que tienen un vendedor real: "Asignable", "Sin Cobertura" y vacío se quedan;
+    // "No Asignable" (y los nombres antiguos) se van a Desecho con el paso diario.
+    const sinVendedorReal = ['', 'asignable', 'sin cobertura', 'no asignable', 'sin asignacion', 'sin asignar', 'desechada'];
     const cumpleCondicion =
-      vendedor &&
-      vendedor !== 'Sin Asignación' &&
-      vendedor !== 'Asignable' &&
-      vendedor !== 'Sin Cobertura' &&
+      sinVendedorReal.indexOf(normalizarTexto(vendedor)) === -1 &&
       estado !== 'Terminada' &&
       estado !== 'Repetida' &&
       estadoX !== 'Desechada/Terminada' &&
@@ -81,7 +76,7 @@ function moverNoAsignadasAConsolidado() {
   });
 
   if (rowsToMove.length > 0) {
-    // Convertir cada fila a las columnas de Consolidado, con código nuevo.
+    // Convertir cada fila a las columnas de Carteras, con código nuevo.
     let ancho = encCon.length;
     while (ancho > 0 && !encCon[ancho - 1]) ancho--;
     const filas = rowsToMove.map(row => {
@@ -94,7 +89,7 @@ function moverNoAsignadasAConsolidado() {
     });
     consolidadoSheet.getRange(ultimaCon + 2, 1, filas.length, ancho).setValues(filas);
 
-    // Limpiar "No Asignadas" y reescribir las que quedan.
+    // Limpiar "Asignables" y reescribir las que quedan.
     baseSheet.getRange(2, 1, lastRowBase - 1, baseSheet.getLastColumn()).clearContent();
     SpreadsheetApp.flush();
     Utilities.sleep(500);
@@ -102,7 +97,7 @@ function moverNoAsignadasAConsolidado() {
       baseSheet.getRange(2, 1, rowsToKeep.length, rowsToKeep[0].length).setValues(rowsToKeep);
     }
 
-    ui.alert(`${rowsToMove.length} fila(s) movidas correctamente a "Consolidado".`);
+    ui.alert(`${rowsToMove.length} fila(s) movidas correctamente a "Carteras".`);
   } else {
     ui.alert('No hay filas que cumplan las condiciones para ser movidas.');
   }

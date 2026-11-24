@@ -17,7 +17,11 @@ function aplicarRevision() {
     const cache = {};
     const hojaRadar = nombre => {
       if (!cache[nombre]) {
-        const h = libro.getSheetByName(nombre);
+        // Acepta los nombres nuevos y los antiguos (la planilla de revisión puede traer cualquiera).
+        const porId = { 'carteras': ID_PESTANA_CARTERAS, 'consolidado': ID_PESTANA_CARTERAS,
+          'asignables': ID_PESTANA_ASIGNABLES, 'no asignadas': ID_PESTANA_ASIGNABLES };
+        const id = porId[normalizarTexto(nombre)];
+        const h = id ? pestana_(libro, id) : libro.getSheetByName(nombre);
         if (!h) throw new Error('No existe la hoja ' + nombre);
         const datos = h.getDataRange().getValues();
         cache[nombre] = { hoja: h, datos: datos, enc: datos[0].map(String), celdas: [] };
@@ -121,7 +125,7 @@ function agregarObrasNuevas_(pestana, hojaRadar) {
   const enc = datos[0].map(String);
   const cRes = enc.indexOf('Resultado');
   const aidsRadar = {};
-  ['Consolidado', 'No Asignadas'].forEach(n => {
+  ['Carteras', 'Asignables'].forEach(n => {
     const c = hojaRadar(n), cA = c.enc.indexOf('AID');
     c.datos.slice(1).forEach(f => { const a = String(f[cA]).trim(); if (a) aidsRadar[a] = true; });
   });
@@ -135,7 +139,7 @@ function agregarObrasNuevas_(pestana, hojaRadar) {
     const aid = String(r['AID'] || '').trim();
     if (aid && aidsRadar[aid]) { saltadas++; return ['Ya estaba en el radar (AID ' + aid + ')']; }
     if (aid) aidsRadar[aid] = true;
-    const destino = r['Hoja destino'] || 'No Asignadas';
+    const destino = r['Hoja destino'] || 'Asignables';
     const c = hojaRadar(destino);
     r['Ubicación Completa'] = [r['Dirección'], r['Comuna'], r['Región'], 'Chile']
       .map(x => String(x || '').trim()).filter(String).join(' | ');
