@@ -143,6 +143,7 @@ function agregarObrasNuevas_(pestana, hojaRadar) {
     const c = hojaRadar(destino);
     r['Ubicación Completa'] = [r['Dirección'], r['Comuna'], r['Región'], 'Chile']
       .map(x => String(x || '').trim()).filter(String).join(' | ');
+    if (!r[COL_FECHA_INGRESO]) r[COL_FECHA_INGRESO] = new Date(); // cuándo entró al radar
     (porHoja[destino] = porHoja[destino] || []).push(r);
     ok++;
     return ['Aplicado'];

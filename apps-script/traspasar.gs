@@ -33,6 +33,9 @@ function copiarYLimpiarTraspasar() {
     // "Comentarios Última Visita" de Traspasadas va a "Próximos Pasos".
     const cCom = col(encOrigen, 'Comentarios Última Visita'), cProx = col(encDestino, 'Próximos Pasos');
     if (cCom !== -1 && cProx !== -1 && !nueva[cProx]) nueva[cProx] = fila[cCom];
+    // Cuándo entró al radar (si la fila de origen no la trae).
+    const cIng = col(encDestino, COL_FECHA_INGRESO);
+    if (cIng !== -1 && !nueva[cIng]) nueva[cIng] = new Date();
     filasParaAgregar.push(nueva);
   });
 

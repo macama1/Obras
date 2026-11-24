@@ -18,7 +18,9 @@ const COL_REGION = 7; // Columna G
 const COL_ULTIMA_ACTUALIZACION = 11; // Columna K (Ajusta si cambió)
 
 // Columnas que nunca se pueden sobrescribir desde la app.
-const COLUMNAS_PROTEGIDAS = ['ID', 'Orden'];
+// "Fecha de Ingreso" = cuándo entró la obra al radar; se llena sola y no se cambia después.
+const COL_FECHA_INGRESO = 'Fecha de Ingreso';
+const COLUMNAS_PROTEGIDAS = ['ID', 'Orden', COL_FECHA_INGRESO];
 // Columnas que solo jefatura puede cambiar (un vendedor no puede pasarse obras ni cambiar el historial).
 const COLUMNAS_SOLO_JEFATURA = ['Vendedor', 'Historial de ejecutivos'];
 
@@ -478,6 +480,7 @@ function createNewObraSinLock_(data, usuario) {
   const nuevaFila = encabezados.map(encabezado => {
     if (encabezado === 'ID') return nuevoId;
     if (encabezado === 'Última Actualización') return new Date();
+    if (encabezado === COL_FECHA_INGRESO) return new Date();
     return data[encabezado] || '';
   });
   
